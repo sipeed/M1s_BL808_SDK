@@ -87,6 +87,7 @@ COMPONENT_SRCDIRS += lvgl/src/extra/widgets/spinner
 COMPONENT_SRCDIRS += lvgl/src/extra/widgets/tabview
 COMPONENT_SRCDIRS += lvgl/src/extra/widgets/tileview
 COMPONENT_SRCDIRS += lvgl/src/extra/widgets/win
+COMPONENT_SRCDIRS += lvgl/src/extra/libs/png
 COMPONENT_SRCDIRS += lvgl/demos
 COMPONENT_SRCDIRS += port
 #COMPONENT_SRCDIRS += lv_lib_freetype
