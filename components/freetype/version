@@ -1,0 +1,8 @@
+remote:
+    git@github.com:RT-Thread/rt-thread.git
+
+commit:
+    83f1abcd850bc349d5ecaf47a1e90b24be08dfea
+
+path:
+    components/external/freetype
