@@ -1,0 +1,11 @@
+*.vscode
+c906_app/build_out
+e907_app/build_out
+toolchain
+
+# MacOS
+.DS_Store
+__pycache__
+
+# Format
+.clang-format

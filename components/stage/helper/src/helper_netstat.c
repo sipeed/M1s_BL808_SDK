@@ -1,0 +1,35 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+#include <FreeRTOS.h>
+#include <task.h>
+#include <queue.h>
+#include <cli.h>
+#include <lwip/tcpip.h>
+#include <lwip/stats.h>
+
+#include "utils_log.h"
+
+#if LWIP_STATS
+
+static void cmd_netstat(char *buf, int len, int argc, char **argv) 
+{
+  tcpip_callback(stats_netstat, NULL);
+}
+
+// STATIC_CLI_CMD_ATTRIBUTE makes this(these) command(s) static
+const static struct cli_command cmds_user[] STATIC_CLI_CMD_ATTRIBUTE = {
+    {"netstat", "show current net states", cmd_netstat},
+};                                                                                   
+
+#endif
+
+int helper_netstat_cli_init(void)
+{
+    // static command(s) do NOT need to call aos_cli_register_command(s) to register.
+    // However, calling aos_cli_register_command(s) here is OK but is of no effect as cmds_user are included in cmds list.
+    // XXX NOTE: Calling this *empty* function is necessary to make cmds_user in this file to be kept in the final link.
+    //return aos_cli_register_commands(cmds_user, sizeof(cmds_user)/sizeof(cmds_user[0]));          
+    return 0;
+}
