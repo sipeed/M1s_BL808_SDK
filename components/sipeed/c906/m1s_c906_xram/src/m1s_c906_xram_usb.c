@@ -46,7 +46,13 @@ static int m1s_xram_usb_operation(m1s_xram_usb_t *obj, enum usb_operation operat
 int m1s_xram_usb_cam_init(void)
 {
     m1s_xram_usb_t op = {0};
-    return m1s_xram_usb_operation(&op, XRAM_USB_INIT);
+    return m1s_xram_usb_operation(&op, XRAM_UVC_INIT);
+}
+
+int m1s_xram_usb_msc_init(void)
+{
+    m1s_xram_usb_t op = {0};
+    return m1s_xram_usb_operation(&op, XRAM_MSC_INIT);
 }
 
 int m1s_xram_usb_deinit(void)

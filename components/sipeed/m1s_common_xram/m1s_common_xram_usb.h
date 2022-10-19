@@ -9,7 +9,8 @@ typedef enum usb_op_err {
 } USB_OP_ERR_TYPE;
 
 enum usb_operation {
-    XRAM_USB_INIT,
+    XRAM_UVC_INIT,
+    XRAM_MSC_INIT,
     XRAM_USB_DEINIT,
 };
 
