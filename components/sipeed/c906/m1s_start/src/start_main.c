@@ -147,8 +147,8 @@ static void aos_loop_proc(void *pvParameters)
         printf("Init CLI with event Driven\r\n");
         aos_cli_init(0);
         aos_poll_read_fd(fd_console, aos_cli_event_cb_read_get(), (void *)0x12345678);
-        aos_post_delayed_action(100, start_main, NULL);
     }
+    aos_post_delayed_action(100, start_main, NULL);
 
     aos_loop_run();
 
