@@ -55,7 +55,7 @@ void get_output_data(struct blai_net_info_t* net, fixed_point_t* DATA_buf, int l
         else
             output = (uint8_t)MEM_RW(0, i, 0, net->layers[layer].out_layer_mem, DATA_buf, net->patch_size);
 
-        BL_LOGI("OUTPUT[%d]: %hhx\r\n", i, output);
+        // BL_LOGI("OUTPUT[%d]: %hhx\r\n", i, output);
     }
 }
 

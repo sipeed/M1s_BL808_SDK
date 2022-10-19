@@ -288,10 +288,10 @@ void bl_sys_enabe_jtag(int cpuid)
             gpio_cfg.gpioPin = GLB_GPIO_PIN_7;
             GLB_GPIO_Init(&gpio_cfg);
 
-            gpio_cfg.gpioPin = GLB_GPIO_PIN_20;
+            gpio_cfg.gpioPin = GLB_GPIO_PIN_12;
             GLB_GPIO_Init(&gpio_cfg);
 
-            gpio_cfg.gpioPin = GLB_GPIO_PIN_21;
+            gpio_cfg.gpioPin = GLB_GPIO_PIN_13;
             GLB_GPIO_Init(&gpio_cfg);
         }
         break;

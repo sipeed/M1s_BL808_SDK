@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <assert.h>
 
 #define ARGMAX(arr, size)                                         \
     ({                                                            \

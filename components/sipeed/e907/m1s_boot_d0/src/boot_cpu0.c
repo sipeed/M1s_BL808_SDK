@@ -105,7 +105,43 @@ static void cmd_halt_cpu0(char *buf, int len, int argc, char **argv) { hal_halt_
 
 static void cmd_release_cpu0(char *buf, int len, int argc, char **argv) { hal_release_cpu0(); }
 
-static void cmd_jtag_cpu0(char *buf, int len, int argc, char **argv) { bl_sys_enabe_jtag(1); }
+static void sipeed_bl_sys_enabe_jtag(int cpuid)
+{
+    GLB_GPIO_Cfg_Type gpio_cfg;
+
+    gpio_cfg.drive = 0;
+    gpio_cfg.smtCtrl = 1;
+    gpio_cfg.pullType = GPIO_PULL_NONE;
+
+    gpio_cfg.gpioMode = GPIO_MODE_AF;
+    switch (cpuid) {
+        case 0: {
+            gpio_cfg.gpioFun = GPIO_FUN_JTAG_M0;
+            puts("Enable CPU0 (M0/E907) on PIN0/PIN1/PIN2/PIN3(TCK/TDI/TMS/TDO)\r\n");
+        } break;
+        case 1: {
+            gpio_cfg.gpioFun = GPIO_FUN_JTAG_D0;
+            puts("Enable CPU1 (D0/C906) on PIN0/PIN1/PIN2/PIN3(TCK/TDI/TMS/TDO)\r\n");
+        } break;
+        default: {
+        } break;
+    }
+    gpio_cfg.gpioPin = GLB_GPIO_PIN_0;
+    GLB_GPIO_Init(&gpio_cfg);
+
+    gpio_cfg.gpioPin = GLB_GPIO_PIN_1;
+    GLB_GPIO_Init(&gpio_cfg);
+
+    gpio_cfg.gpioPin = GLB_GPIO_PIN_2;
+    GLB_GPIO_Init(&gpio_cfg);
+
+    gpio_cfg.gpioPin = GLB_GPIO_PIN_3;
+    GLB_GPIO_Init(&gpio_cfg);
+}
+
+static void cmd_jtag_cpu0(char *buf, int len, int argc, char **argv) { sipeed_bl_sys_enabe_jtag(1); }
+
+static void cmd_jtag_m0(char *buf, int len, int argc, char **argv) { sipeed_bl_sys_enabe_jtag(0); }
 
 static void cmd_c906_bringup(char *buf, int len, int argc, char **argv)
 {
@@ -114,9 +150,10 @@ static void cmd_c906_bringup(char *buf, int len, int argc, char **argv)
 
 const static struct cli_command cmds_user[] STATIC_CLI_CMD_ATTRIBUTE = {
     {"halt_cpu0", "cpu0 halt", cmd_halt_cpu0},
-    {"jtag_cpu0", "cpu0 release", cmd_jtag_cpu0},
+    {"jtag_cpu0", "cpu0 jtag", cmd_jtag_cpu0},
     {"release_cpu0", "cpu0 release", cmd_release_cpu0},
     {"c906", "setup c906", cmd_c906_bringup},
+    {"jtag_m0", "cpu m0 jtag", cmd_jtag_m0},
 };
 
 int boot_cpu0_cli_init(void)

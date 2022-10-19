@@ -61,10 +61,10 @@ static void BilinearInterpolation_RGBA8888(uint32_t *source, uint16_t sw, uint16
                                            uint16_t th)
 {
     typedef struct {
-        uint8_t a;
-        uint8_t b;
-        uint8_t g;
-        uint8_t r;
+        uint32_t r : 8;
+        uint32_t g : 8;
+        uint32_t b : 8;
+        uint32_t a : 8;
     } rgba8888_t;
     for (uint32_t hnum = 0; hnum < th; hnum++) {
         for (uint32_t wnum = 0; wnum < tw; wnum++) {
@@ -95,11 +95,11 @@ static void BilinearInterpolation_RGBA8888(uint32_t *source, uint16_t sw, uint16
 
             // hnum * write_width + wnum;  //映射尺度变换图像数组位置偏移量
 
-            ((rgba8888_t *)target + hnum * tw + wnum)->a = 0;
-            // ((rgba8888_t *)source + original_point_a)->a * (1 - distance_to_a_x) * (1 - distance_to_a_y) +
-            // ((rgba8888_t *)source + original_point_b)->a * distance_to_a_x * (1 - distance_to_a_y) +
-            // ((rgba8888_t *)source + original_point_c)->a * distance_to_a_y * (1 - distance_to_a_x) +
-            // ((rgba8888_t *)source + original_point_d)->a * distance_to_a_y * distance_to_a_x;
+            ((rgba8888_t *)target + hnum * tw + wnum)->a =
+                ((rgba8888_t *)source + original_point_a)->a * (1 - distance_to_a_x) * (1 - distance_to_a_y) +
+                ((rgba8888_t *)source + original_point_b)->a * distance_to_a_x * (1 - distance_to_a_y) +
+                ((rgba8888_t *)source + original_point_c)->a * distance_to_a_y * (1 - distance_to_a_x) +
+                ((rgba8888_t *)source + original_point_d)->a * distance_to_a_y * distance_to_a_x;
             ((rgba8888_t *)target + hnum * tw + wnum)->b =
                 ((rgba8888_t *)source + original_point_a)->b * (1 - distance_to_a_x) * (1 - distance_to_a_y) +
                 ((rgba8888_t *)source + original_point_b)->b * distance_to_a_x * (1 - distance_to_a_y) +
