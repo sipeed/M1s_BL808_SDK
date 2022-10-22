@@ -11,7 +11,8 @@ COMPONENT_SRCS := 	src/m1s_c906_xram.c \
 					src/m1s_c906_xram_wifi.c \
 					src/m1s_c906_xram_audio.c \
 					src/m1s_c906_xram_pwm.c \
-					src/m1s_c906_xram_usb.c
+					src/m1s_c906_xram_usb.c \
+					src/m1s_c906_xram_flash.c
 
 COMPONENT_OBJS := $(patsubst %.c,%.o, $(COMPONENT_SRCS))
 

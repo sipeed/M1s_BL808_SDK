@@ -6,6 +6,7 @@
 
 #include "m1s_common_xram.h"
 #include "m1s_e907_xram_audio.h"
+#include "m1s_e907_xram_flash.h"
 #include "m1s_e907_xram_pwm.h"
 #include "m1s_e907_xram_usb.h"
 #include "m1s_e907_xram_wifi.h"
@@ -109,6 +110,10 @@ void m1s_e907_xram_operation_handle()
             }
             case M1S_XRAM_TYPE_USB: {
                 m1s_e907_xram_usb_operation_handle(rx_hdr.len);
+                break;
+            }
+            case M1S_XRAM_TYPE_FLASH: {
+                m1s_e907_xram_flash_operation_handle(rx_hdr.len);
                 break;
             }
             default: {

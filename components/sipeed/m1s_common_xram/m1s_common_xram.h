@@ -12,6 +12,7 @@ enum m1s_xram_type {
     M1S_XRAM_TYPE_WIFI = 0x82,
     M1S_XRAM_TYPE_PWM = 0x83,
     M1S_XRAM_TYPE_USB = 0x84,
+    M1S_XRAM_TYPE_FLASH = 0x85,
     M1S_XRAM_TYPE_MAX,
 };
 
