@@ -28,6 +28,8 @@ static int m1s_xram_flash_operation(m1s_xram_flash_t *obj, enum flash_operation 
     tx_hdr.len = sizeof(m1s_xram_flash_t);
     obj->op = operation;
     // printf("[xram][flash]%s off:%#x, addr:%#x, len:%#x\r\n", (operation==XRAM_FLASH_READ)?"read":(operation==XRAM_FLASH_WRITE)?"write":"erase", obj->offset, obj->addr, obj->len);
+    // FIXME: the offset of flash is not equal to the partition table provided to the bflb dev cube
+    obj->offset += 0x1000;
     bytes = XRAMRingWrite(XRAM_OP_QUEUE, &tx_hdr, sizeof(struct xram_hdr));
     bytes += XRAMRingWrite(XRAM_OP_QUEUE, obj, sizeof(m1s_xram_flash_t));
     if (bytes != sizeof(struct xram_hdr) + sizeof(m1s_xram_flash_t)) {
