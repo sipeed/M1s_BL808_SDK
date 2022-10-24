@@ -52,22 +52,28 @@ static int m1s_xram_flash_operation(m1s_xram_flash_t *obj, enum flash_operation 
 
 int m1s_xram_flash_read(uint32_t offset, uint32_t addr, uint32_t len)
 {
+    if(0 == len) return 0;
     op.offset = offset;
     op.addr = addr;
     op.len = len;
-    return m1s_xram_flash_operation(&op, XRAM_FLASH_READ);
+    int ret = m1s_xram_flash_operation(&op, XRAM_FLASH_READ);
+    csi_dcache_clean_invalid_range((uint64_t)addr, len);
+    return ret;
 }
 
 int m1s_xram_flash_write(uint32_t offset, uint32_t addr, uint32_t len)
 {
+    if(0 == len) return 0;
     op.offset = offset;
     op.addr = addr;
     op.len = len;
+    csi_dcache_clean_invalid_range((uint64_t)addr, len);
     return m1s_xram_flash_operation(&op, XRAM_FLASH_WRITE);
 }
 
 int m1s_xram_flash_erase(uint32_t offset, uint32_t len)
 {
+    if(0 == len) return 0;
     op.offset = offset;
     op.len = len;
     return m1s_xram_flash_operation(&op, XRAM_FLASH_ERASE);

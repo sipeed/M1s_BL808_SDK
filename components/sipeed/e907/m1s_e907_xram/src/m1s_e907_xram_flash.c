@@ -48,11 +48,11 @@ static int xram_flash_write(m1s_xram_flash_t *op)
     uint32_t bytes;
     enum flash_op_err err = FLASH_OP_OK;
 
+    csi_dcache_clean_invalid_range((uint32_t)op->addr, op->len);
     /* flash deinit */
     if (0 != bl_flash_write(op->offset, op->addr, op->len)) {
         err = FLASH_OP_ERR;
     }
-    csi_dcache_clean_invalid_range((uint32_t)op->addr, op->len);
 
     /* xram response */
     hdr.type = M1S_XRAM_TYPE_FLASH;
