@@ -27,7 +27,7 @@ static int xram_flash_read(m1s_xram_flash_t *op)
     if (0 != bl_flash_read(op->offset, op->addr, op->len)) {
         err = FLASH_OP_ERR;
     }
-    csi_dcache_clean_invalid_range((uint32_t)op->addr, op->len);
+    csi_dcache_clean_range((uint32_t)op->addr, op->len);
 
     /* xram response */
     hdr.type = M1S_XRAM_TYPE_FLASH;
@@ -48,7 +48,7 @@ static int xram_flash_write(m1s_xram_flash_t *op)
     uint32_t bytes;
     enum flash_op_err err = FLASH_OP_OK;
 
-    csi_dcache_clean_invalid_range((uint32_t)op->addr, op->len);
+    csi_dcache_invalid_range((uint32_t)op->addr, op->len);
     /* flash deinit */
     if (0 != bl_flash_write(op->offset, op->addr, op->len)) {
         err = FLASH_OP_ERR;
@@ -98,7 +98,11 @@ void m1s_e907_xram_flash_operation_handle(uint32_t len)
 
     bytes = XRAMRingRead(XRAM_OP_QUEUE, &obj_op, len);
     if (bytes == sizeof(m1s_xram_flash_t)) {
-        // printf("xram flash handle %lu\r\n", (obj_op.op==XRAM_FLASH_READ)?"read":(obj_op.op==XRAM_FLASH_WRITE)?"write":"erase");
+        // printf("xram flash handle %s, off:%#x, addr:%#x, len:%#x\r\n",
+        //        (obj_op.op == XRAM_FLASH_READ)    ? "read"
+        //        : (obj_op.op == XRAM_FLASH_WRITE) ? "write"
+        //                                          : "erase",
+        //        (unsigned int)obj_op.offset, (unsigned int)obj_op.addr, (unsigned int)obj_op.len);
         switch (obj_op.op) {
             case XRAM_FLASH_READ: {
                 xram_flash_read(&obj_op);

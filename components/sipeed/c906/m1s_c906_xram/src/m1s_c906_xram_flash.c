@@ -27,7 +27,11 @@ static int m1s_xram_flash_operation(m1s_xram_flash_t *obj, enum flash_operation 
     tx_hdr.err = FLASH_OP_OK;
     tx_hdr.len = sizeof(m1s_xram_flash_t);
     obj->op = operation;
-    // printf("[xram][flash]%s off:%#x, addr:%#x, len:%#x\r\n", (operation==XRAM_FLASH_READ)?"read":(operation==XRAM_FLASH_WRITE)?"write":"erase", obj->offset, obj->addr, obj->len);
+    // printf("[xram][flash]%s off:%#x, addr:%#x, len:%#x\r\n",
+    //        (operation == XRAM_FLASH_READ)    ? "read"
+    //        : (operation == XRAM_FLASH_WRITE) ? "write"
+    //                                          : "erase",
+    //        obj->offset, obj->addr, obj->len);
     // FIXME: the offset of flash is not equal to the partition table provided to the bflb dev cube
     obj->offset += 0x1000;
     bytes = XRAMRingWrite(XRAM_OP_QUEUE, &tx_hdr, sizeof(struct xram_hdr));
@@ -50,30 +54,30 @@ static int m1s_xram_flash_operation(m1s_xram_flash_t *obj, enum flash_operation 
     return ret;
 }
 
-int m1s_xram_flash_read(uint32_t offset, uint32_t addr, uint32_t len)
+int m1s_xram_flash_read(uint32_t offset, void *const addr, uint32_t len)
 {
-    if(0 == len) return 0;
+    if (0 == len) return 0;
     op.offset = offset;
     op.addr = addr;
     op.len = len;
+    csi_dcache_clean_invalid();
     int ret = m1s_xram_flash_operation(&op, XRAM_FLASH_READ);
-    csi_dcache_clean_invalid_range((uint64_t)addr, len);
     return ret;
 }
 
-int m1s_xram_flash_write(uint32_t offset, uint32_t addr, uint32_t len)
+int m1s_xram_flash_write(uint32_t offset, void *const addr, uint32_t len)
 {
-    if(0 == len) return 0;
+    if (0 == len) return 0;
     op.offset = offset;
     op.addr = addr;
     op.len = len;
-    csi_dcache_clean_invalid_range((uint64_t)addr, len);
+    csi_dcache_clean();
     return m1s_xram_flash_operation(&op, XRAM_FLASH_WRITE);
 }
 
 int m1s_xram_flash_erase(uint32_t offset, uint32_t len)
 {
-    if(0 == len) return 0;
+    if (0 == len) return 0;
     op.offset = offset;
     op.len = len;
     return m1s_xram_flash_operation(&op, XRAM_FLASH_ERASE);
