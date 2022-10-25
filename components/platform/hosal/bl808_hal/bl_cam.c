@@ -352,9 +352,13 @@ int bl_cam_mjpeg_deinit(void)
 #define MIPI_HEIGHT                    1200
 #define SCALER_WIDTH                   800
 #define SCALER_HEIGHT                  600
+#define RGB565_SCALER_WIDTH            400
+#define RGB565_SCALER_HEIGHT           300
+#define RGB0_SCALER_WIDTH              400
+#define RGB0_SCALER_HEIGHT             300
 #define YUV422_FRAME_SIZE              (MIPI_WIDTH * MIPI_HEIGHT * 2)
-#define RGB0_FRAME_SIZE                (MIPI_WIDTH * MIPI_HEIGHT * 4)
-#define RGB565_FRAME_SIZE              (MIPI_WIDTH * MIPI_HEIGHT * 2)
+#define RGB0_FRAME_SIZE                (RGB0_SCALER_WIDTH * RGB0_SCALER_HEIGHT * 4)
+#define RGB565_FRAME_SIZE              (RGB565_SCALER_WIDTH * RGB565_SCALER_HEIGHT * 2)
 #define FRAME_COUNT                    2 
 
 #define DSP2_USE_CLK                    (80000000)
@@ -437,7 +441,7 @@ int bl_cam_mipi_yuv_init(void)
         .linePol = CAM_LINE_ACTIVE_POLARITY_HIGH,
         .framePol = CAM_FRAME_ACTIVE_POLARITY_HIGH,
         .camSensorMode = CAM_SENSOR_MODE_V_AND_H,
-        .burstType = CAM_BURST_TYPE_INCR64,
+        .burstType = CAM_BURST_TYPE_INCR16,
         .waitCount = 0x40,
         .memStart = NULL, //need init 
         .memSize = 0,
@@ -453,7 +457,24 @@ int bl_cam_mipi_yuv_init(void)
         }
     }
 
+    DSP2_MISC_Scaler_Cfg_Type scaler_cfg = 
+    {
+        .inputWidth = MIPI_WIDTH,
+        .inputHeight = MIPI_HEIGHT,
+        .outputWidth = RGB0_SCALER_WIDTH,
+        .outputHeight = RGB0_SCALER_HEIGHT,
+    };
+
     bl_cam_mipi_csi_init();
+
+    DSP2_MISC_Scaler_Input_Select(DSP2_MISC_SCALER_3_ID, DSP2_MISC_SCALER_DSP2_INPUT);
+    DSP2_MISC_Scaler_Init(DSP2_MISC_SCALER_3_ID, &scaler_cfg);
+    DSP2_MISC_Scaler_Enable(DSP2_MISC_SCALER_3_ID);
+
+    DSP2_Scaler_Set_Input(DSP2_MISC_SCALER_D, DSP2_MISC_SCALER_DSP2_INPUT);
+    DSP2_YUV2RGB_Init(DSP2_YUV2RGB_PARAM_8BIT_BT601);
+    DSP2_YUV2RGB_Set_Input(DSP2_YUV2RGB_A, DSP2_YUV2RGB_INPUT_SCALER_D);
+
     DSP2_MISC_CAM_Input_Select(DSP2_MISC_CAM_7_ID, DSP2_MISC_CAM_YUV2RGB_OUTPUT);
     camcfg.memStart = (uint32_t)(uintptr_t)mipi_pic_buf;
     camcfg.memSize = RGB0_FRAME_SIZE * FRAME_COUNT;
@@ -506,7 +527,7 @@ int bl_cam_mipi_rgb565_init(void)
         .linePol = CAM_LINE_ACTIVE_POLARITY_HIGH,
         .framePol = CAM_FRAME_ACTIVE_POLARITY_HIGH,
         .camSensorMode = CAM_SENSOR_MODE_V_AND_H,
-        .burstType = CAM_BURST_TYPE_INCR64,
+        .burstType = CAM_BURST_TYPE_INCR16,
         .waitCount = 0x40,
         .memStart = NULL, //need init 
         .memSize = 0,
@@ -522,7 +543,24 @@ int bl_cam_mipi_rgb565_init(void)
         }
     }
 
+    DSP2_MISC_Scaler_Cfg_Type scaler_cfg = 
+    {
+        .inputWidth = MIPI_WIDTH,
+        .inputHeight = MIPI_HEIGHT,
+        .outputWidth = RGB565_SCALER_WIDTH,
+        .outputHeight = RGB565_SCALER_HEIGHT,
+    };
+
     bl_cam_mipi_csi_init();
+
+    DSP2_MISC_Scaler_Input_Select(DSP2_MISC_SCALER_2_ID, DSP2_MISC_SCALER_DSP2_INPUT);
+    DSP2_MISC_Scaler_Init(DSP2_MISC_SCALER_2_ID, &scaler_cfg);
+    DSP2_MISC_Scaler_Enable(DSP2_MISC_SCALER_2_ID);
+
+    DSP2_Scaler_Set_Input(DSP2_MISC_SCALER_C, DSP2_MISC_SCALER_DSP2_INPUT);
+    DSP2_YUV2RGB_Init(DSP2_YUV2RGB_PARAM_8BIT_BT601);
+    DSP2_YUV2RGB_Set_Input(DSP2_YUV2RGB_A, DSP2_YUV2RGB_INPUT_SCALER_C);
+
     DSP2_MISC_CAM_Input_Select(DSP2_MISC_CAM_5_ID, DSP2_MISC_CAM_YUV2RGB_OUTPUT);
     camcfg.memStart = (uint32_t)(uintptr_t)rgb565_pic_buf;
     camcfg.memSize = RGB565_FRAME_SIZE * FRAME_COUNT;
@@ -634,8 +672,8 @@ int bl_cam_mipi_mjpeg_init(void)
     {
         .inputWidth = MIPI_WIDTH,
         .inputHeight = MIPI_HEIGHT,
-        .outputWidth = SCALER_WIDTH,
-        .outputHeight = SCALER_HEIGHT,
+        .outputWidth = RGB565_SCALER_WIDTH,
+        .outputHeight = RGB565_SCALER_HEIGHT,
     };
 
     cameraCfg.memStart = (uint32_t)(uintptr_t)line_buf;
