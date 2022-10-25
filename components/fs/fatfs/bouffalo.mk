@@ -1,9 +1,9 @@
 # Component Makefile
 #
 ## These include paths would be exported to project level
-COMPONENT_ADD_INCLUDEDIRS += 
+COMPONENT_ADD_INCLUDEDIRS += ff/include
 ## not be exported to project level
-COMPONENT_PRIV_INCLUDEDIRS := ff/include
+COMPONENT_PRIV_INCLUDEDIRS := 
 
 ## This component's src 
 COMPONENT_SRCS := src/fatfs.c \

@@ -27,8 +27,8 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __BL_FLASH_H__
-#define __BL_FLASH_H__
+#ifndef __BL_USB_CAM_H__
+#define __BL_USB_CAM_H__
 #include <stdint.h>
 int bl_usb_cam_init(void);
 int bl_usb_cam_transfer(void);
