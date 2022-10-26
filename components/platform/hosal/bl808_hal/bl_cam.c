@@ -672,8 +672,8 @@ int bl_cam_mipi_mjpeg_init(void)
     {
         .inputWidth = MIPI_WIDTH,
         .inputHeight = MIPI_HEIGHT,
-        .outputWidth = RGB565_SCALER_WIDTH,
-        .outputHeight = RGB565_SCALER_HEIGHT,
+        .outputWidth = SCALER_WIDTH,
+        .outputHeight = SCALER_HEIGHT,
     };
 
     cameraCfg.memStart = (uint32_t)(uintptr_t)line_buf;
