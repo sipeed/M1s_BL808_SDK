@@ -20,6 +20,8 @@ static struct {
     uint32_t blk_size;
     uint8_t write_start;
     uint64_t last_write_ms;
+    uint8_t *cache_d0fw_buff;
+    uint8_t *check_d0fw_buff;
 } private;
 
 #define USBD_VID 0xffff
@@ -101,20 +103,28 @@ static void usb_clock_init(void)
     GLB_Set_USB_CLK_From_WIFIPLL(1);
 }
 
-static void upload_c906_firmware(uint8_t *c906, uint32_t size)
+static void upload_c906_firmware(uint8_t *d0fw, uint32_t size)
 {
     bl_mtd_handle_t handle;
     bl_mtd_info_t info = {0};
     bl_mtd_open("D0FW", &handle, BL_MTD_OPEN_FLAG_BUSADDR);
     bl_mtd_info(handle, &info);
+    bl_mtd_close(handle);
     if (info.offset != 0 && info.size >= size) {
         info.offset += 0x1000;
-        bl_flash_erase(info.offset, size);
-        bl_flash_write(info.offset, c906, size);
+        if (bl_flash_erase(info.offset, size)
+            || bl_flash_write(info.offset, d0fw, size)
+            || bl_flash_read(info.offset, private.check_d0fw_buff, size)) {
+            printf("flash operation failed..\r\n");
+            return;
+        }
+        if (memcmp(d0fw, private.cache_d0fw_buff, size)) {
+            printf("d0fw code check failed, please upload again..\r\n");
+            return;
+        }
         printf("upload is ok!\r\n");
         hal_reboot();
     }
-    bl_mtd_close(handle);
 }
 
 static void upload_firmware_cb(TCHAR *path)
@@ -125,22 +135,18 @@ static void upload_firmware_cb(TCHAR *path)
     FILINFO fno;
     UINT br;
     TCHAR fw_path[50];
-    uint8_t *d0fw = NULL;
 #define C906_FW "d0fw.bin"
     snprintf(fw_path, sizeof(fw_path), "%s%s", path, C906_FW);
     if (FR_OK != (res = f_mount(&fs, path, 0))) goto _exit;
     if (FR_OK != (res = f_stat(fw_path, &fno))) goto _exit;
-    d0fw = (uint8_t *)pvPortMalloc(fno.fsize);
-    if (!d0fw) goto _exit;
     if (FR_OK != (res = f_open(&fil, fw_path, FA_READ))) goto _exit;
-    if (FR_OK != (res = f_read(&fil, d0fw, fno.fsize, &br))) goto _exit;
-    if (fno.fsize == br) upload_c906_firmware(d0fw, br);
+    if (FR_OK != (res = f_read(&fil, private.cache_d0fw_buff, fno.fsize, &br))) goto _exit;
+    if (fno.fsize == br) upload_c906_firmware(private.cache_d0fw_buff, br);
     if (FR_OK != (res = f_close(&fil))) goto _exit;
     if (FR_OK != (res = f_unlink(fw_path))) goto _exit;
     if (FR_OK != (res = f_unmount(fw_path))) goto _exit;
-
 _exit:
-    if (d0fw) vPortFree(d0fw);
+    return;
 }
 
 static void upload_firmware_handle(void *param)
@@ -230,6 +236,13 @@ int m1s_msc_init(uint8_t type)
     } else if (type == 2) {  // RAM Fatfs
         char *path = "2:";
         if (0 != gen_ram_fatfs(path)) return -1;
+        /*
+            Note: 0x52000000~0x527FFFFF(8M) used to cache d0fw
+                  0x52800000~0x52FFFFFF(8M) used to check d0fw
+                  At this time, c906 is not started, so this part of memory can be used safely
+        */
+        private.cache_d0fw_buff = 0x52000000;
+        private.check_d0fw_buff = 0x52800000;
         if (pdTRUE != xTaskCreate(upload_firmware_handle, "upload firmware", 1024, path, 15, NULL)) return -1;
     }
 
