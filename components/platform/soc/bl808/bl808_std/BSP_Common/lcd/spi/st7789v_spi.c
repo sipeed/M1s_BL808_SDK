@@ -196,6 +196,7 @@ static struct {
                              {0x02, 0x02, {PIXEL_FORMAT_SET, 0x55}},
                              {0x01, 0x0f, {INVERSION_DISPALY_ON}},
                              {0x01, 0x00, {DISPALY_ON}},
+                             {0x00, 0x00, {0xC6, 0x00}},
                              {0x00, 0x00, {}}};
 
 static void st7789v_spi_init_seq(void)
