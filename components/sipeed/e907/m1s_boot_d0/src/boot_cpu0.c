@@ -37,6 +37,8 @@ void mm_clk_config(void)
     bl_mm_cpu_clk_config(CPU_CLK_MUXPLL_400M);   /*cpu pll select 400M*/
     bl_mm_uart_clk_config(UART_CLK_XCLK1);       /*uart select xclk and xclk select XTAL*/
     bl_mm_i2c_clk_config(I2C_CLK_XCLK);          /*i2c select xclk and xclk select XTAL*/
+    GLB_Set_DSP_System_CLK(GLB_DSP_SYS_CLK_CPUPLL_400M);
+    GLB_Config_CPU_PLL(GLB_XTAL_40M, cpuPllCfg_480M);
 }
 
 int check_key_press(void)
