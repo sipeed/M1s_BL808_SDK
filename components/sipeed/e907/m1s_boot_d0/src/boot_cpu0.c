@@ -23,6 +23,7 @@
 #include <string.h>
 #include <task.h>
 #include <vfs.h>
+#include "m1s_msc.h"
 
 #include "l2_sram.h"
 
@@ -37,61 +38,83 @@ void mm_clk_config(void)
     bl_mm_uart_clk_config(UART_CLK_XCLK1);       /*uart select xclk and xclk select XTAL*/
     bl_mm_i2c_clk_config(I2C_CLK_XCLK);          /*i2c select xclk and xclk select XTAL*/
 }
+
+int check_key_press(void)
+{
+    GLB_GPIO_Cfg_Type cfg;
+    cfg.drive=0;
+    cfg.smtCtrl=1;
+    cfg.gpioFun = GPIO_FUN_GPIO;                
+    cfg.gpioMode = GPIO_MODE_INPUT;
+    cfg.pullType = GPIO_PULL_UP;
+    cfg.gpioPin = 22;
+    GLB_GPIO_Input_Enable(cfg.gpioPin);
+    GLB_GPIO_Init(&cfg);
+
+    cfg.gpioPin = 23;
+    GLB_GPIO_Input_Enable(cfg.gpioPin);
+    GLB_GPIO_Init(&cfg);
+
+    if (!GLB_GPIO_Read(22) && !GLB_GPIO_Read(23)) {
+        return 1;
+    }
+    return 0;
+}
+
 void c906_bringup(uint32_t start_addr)
 {
+    if (check_key_press()) {
+        m1s_msc_init(2);
+    } else {
 #if 0
-    // 留着这里的代码，加载产测固件时再修改
-    int fd = -1;
-    romfs_filebuf_t filebuf;
-    fd = aos_open("/romfs/c906.bin", 0);
-    aos_ioctl(fd, IOCTL_ROMFS_GET_FILEBUF, (long unsigned int)&filebuf);
-    if (fd < 0) {
-        printf("/romfs/c906.bin not found!\r\n");
-        vTaskDelete(NULL);
-        return;
-    }
+        // 留着这里的代码，加载产测固件时再修改
+        int fd = -1;
+        romfs_filebuf_t filebuf;
+        fd = aos_open("/romfs/c906.bin", 0);
+        aos_ioctl(fd, IOCTL_ROMFS_GET_FILEBUF, (long unsigned int)&filebuf);
+        if (fd < 0) {
+            printf("/romfs/c906.bin not found!\r\n");
+            vTaskDelete(NULL);
+            return;
+        }
 
-    aos_close(fd);
-    printf("Found file %s. XIP Addr %p, len %lu\r\n",
-            "/romfs/c906.bin",
-            filebuf.buf,
-            (unsigned long)filebuf.bufsize);
-    memcpy((void *)start_addr, filebuf.buf, (unsigned long)filebuf.bufsize);
-    csi_dcache_clean_range((uint32_t *)start_addr, (unsigned long)filebuf.bufsize);
+        aos_close(fd);
+        printf("Found file %s. XIP Addr %p, len %lu\r\n",
+                "/romfs/c906.bin",
+                filebuf.buf,
+                (unsigned long)filebuf.bufsize);
+        memcpy((void *)start_addr, filebuf.buf, (unsigned long)filebuf.bufsize);
+        csi_dcache_clean_range((uint32_t *)start_addr, (unsigned long)filebuf.bufsize);
 #else
-    // uint32_t c906_addr = 0, c906_size = 0;
-    bl_mtd_handle_t handle_d0fw;
-    bl_mtd_info_t info;
-    int ret = -1;
+        bl_mtd_handle_t handle_d0fw;
+        bl_mtd_info_t info;
+        int ret = -1;
 
-    if ((ret = bl_mtd_open("D0FW", &handle_d0fw, BL_MTD_OPEN_FLAG_BUSADDR))) {
-        printf("[EF] [PART] [XIP] error when get D0FW partition %d\r\n", ret);
-        return;
-    }
-    memset(&info, 0, sizeof(info));
-    bl_mtd_info(handle_d0fw, &info);
+        if ((ret = bl_mtd_open("D0FW", &handle_d0fw, BL_MTD_OPEN_FLAG_BUSADDR))) {
+            printf("[EF] [PART] [XIP] error when get D0FW partition %d\r\n", ret);
+            return;
+        }
+        memset(&info, 0, sizeof(info));
+        bl_mtd_info(handle_d0fw, &info);
+        if (0 == info.xip_addr) {
+            printf("D0FW has no XIP-Addr\r\n");
+            return;
+        }
 
-    if (0 == info.xip_addr) {
-        printf("D0FW has no XIP-Addr\r\n");
-        return;
-    }
-    // hal_boot2_partition_bus_addr_active("D0FW", &c906_addr, &c906_size);
-    // printf("D0FW addr:%#lx size:%#lx\r\n", c906_addr, c906_size);
-    printf("D0FW addr:%#lx size:%#lx\r\n", (uint32_t)info.xip_addr, (uint32_t)info.size);
-    memcpy((void *)start_addr, (void *)info.xip_addr, (unsigned long)info.size);
-    csi_dcache_clean_range((uint32_t *)start_addr, (unsigned long)info.size);
-    // memcpy((void *)start_addr, (void *)c906_addr, (unsigned long)c906_size);
-    // csi_dcache_clean_range((uint32_t *)start_addr, (unsigned long)c906_size);
+        printf("D0FW addr:%#lx size:%#lx\r\n", (uint32_t)info.xip_addr, (uint32_t)info.size);
+        memcpy((void *)start_addr, (void *)info.xip_addr, (unsigned long)info.size);
+        csi_dcache_clean_range((uint32_t *)start_addr, (unsigned long)info.size);
+        bl_mtd_close(handle_d0fw);
 #endif
-
-    /* boot c906 */
-    hal_enable_cpu0();
-    hal_halt_cpu0();
-    mm_clk_config();
-    l2_sram_vram_config();
-    bl_mtimer_c906_clock_init();
-    hal_boot_cpu0(start_addr);
-    bl_mm_clk_dump();
+        /* boot c906 */
+        hal_enable_cpu0();
+        hal_halt_cpu0();
+        mm_clk_config();
+        l2_sram_vram_config();
+        bl_mtimer_c906_clock_init();
+        hal_boot_cpu0(start_addr);
+        bl_mm_clk_dump();
+    }
 }
 
 static void c906_bringup_entry(void *arg)
@@ -143,17 +166,11 @@ static void cmd_jtag_cpu0(char *buf, int len, int argc, char **argv) { sipeed_bl
 
 static void cmd_jtag_m0(char *buf, int len, int argc, char **argv) { sipeed_bl_sys_enabe_jtag(0); }
 
-static void cmd_c906_bringup(char *buf, int len, int argc, char **argv)
-{
-    xTaskCreate(c906_bringup_entry, (char *)"bootc906", 2048, NULL, 10, NULL);
-}
+static void cmd_c906_bringup(char *buf, int len, int argc, char **argv) { xTaskCreate(c906_bringup_entry, (char *)"bootc906", 2048, NULL, 10, NULL); }
 
 const static struct cli_command cmds_user[] STATIC_CLI_CMD_ATTRIBUTE = {
-    {"halt_cpu0", "cpu0 halt", cmd_halt_cpu0},
-    {"jtag_cpu0", "cpu0 jtag", cmd_jtag_cpu0},
-    {"release_cpu0", "cpu0 release", cmd_release_cpu0},
-    {"c906", "setup c906", cmd_c906_bringup},
-    {"jtag_m0", "cpu m0 jtag", cmd_jtag_m0},
+    {"halt_cpu0", "cpu0 halt", cmd_halt_cpu0}, {"jtag_cpu0", "cpu0 jtag", cmd_jtag_cpu0}, {"release_cpu0", "cpu0 release", cmd_release_cpu0},
+    {"c906", "setup c906", cmd_c906_bringup},  {"jtag_m0", "cpu m0 jtag", cmd_jtag_m0},
 };
 
 int boot_cpu0_cli_init(void)

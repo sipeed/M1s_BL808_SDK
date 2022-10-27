@@ -3,7 +3,7 @@
 /---------------------------------------------------------------------------*/
 #define CONFIG_AOS_FATFS_SUPPORT_MMC
 //#define CONFIG_AOS_FATFS_SUPPORT_USB
-//#define CONFIG_AOS_FATFS_SUPPORT_RAM
+#define CONFIG_AOS_FATFS_SUPPORT_RAM
 
 #define FFCONF_DEF 86606 /* Revision ID */
 

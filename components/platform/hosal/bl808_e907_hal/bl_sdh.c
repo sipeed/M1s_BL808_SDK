@@ -1275,7 +1275,7 @@ status_t SDH_Init(uint32_t bus_wide, sd_card_t *pOutCardInfo)
 	/* config sdh clock */
 	GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_SDH);
     GLB_Set_SDH_CLK(1, GLB_SDH_CLK_WIFIPLL_96M, 0);
-	SDH_ClockSet(400000, 96000000, 48000000);
+	SDH_ClockSet(400000, 96000000, 96000000);
 
 #if SDIO_SDCARD_INT_MODE
     SDH_INT_Init();
