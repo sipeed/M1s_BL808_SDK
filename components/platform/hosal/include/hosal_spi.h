@@ -98,7 +98,7 @@ int hosal_spi_init(hosal_spi_dev_t *spi);
  *       - 0 : on success  
  *       - other : error
  */
-int hosal_spi_send(hosal_spi_dev_t *spi, const uint8_t *data, uint16_t size, uint32_t timeout);
+int hosal_spi_send(hosal_spi_dev_t *spi, const uint8_t *data, uint32_t size, uint32_t timeout);
 
 /**
  * @brief Spi recv

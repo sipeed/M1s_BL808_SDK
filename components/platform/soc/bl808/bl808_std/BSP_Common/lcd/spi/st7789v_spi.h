@@ -13,7 +13,7 @@
 
 int st7789v_spi_init(void);
 int st7789v_spi_deinit(void);
-int st7789v_spi_clear(uint32_t color);
+int st7789v_spi_clear(uint16_t color);
 void st7789v_spi_async_callback_register(void (*callback)(void));
 int st7789v_spi_set_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
 int st7789v_spi_set_dir(uint8_t dir, uint8_t mir_flag);

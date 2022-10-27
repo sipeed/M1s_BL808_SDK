@@ -1,6 +1,8 @@
 #include "st7789v_spi.h"
 #include "bl808_glb.h"
 #include "bl808_spi.h"
+#include <hosal_spi.h>
+#include <hosal_dma.h>
 
 #define LCD_CS_PIN                  (GLB_GPIO_PIN_12)
 #define LCD_MOSI_PIN                (GLB_GPIO_PIN_25)
@@ -16,6 +18,7 @@
 #define LCD_RST_H                   GLB_GPIO_Write(LCD_RST_PIN,1) 
 #define LCD_RST_L                   GLB_GPIO_Write(LCD_RST_PIN,0) 
 
+hosal_spi_dev_t spi = {0};
 static int lcd_gpio_init(void)
 {
     GLB_GPIO_Cfg_Type cfg;
@@ -71,44 +74,28 @@ static int lcd_gpio_deinit(void)
 
 static int lcd_spi_init(int id)
 {
-    SPI_CFG_Type spiCfg = { 0 };
-    SPI_FifoCfg_Type fifoCfg = { 0 };
-    
-    /* Enable spi interrupt*/
-    SPI_IntMask(id, SPI_INT_ALL, MASK);
-    SPI_Disable(id, SPI_WORK_MODE_MASTER);
-    GLB_Set_DSP_SPI_0_ACT_MOD_Sel(GLB_SPI_PAD_ACT_AS_MASTER);
-    SPI_SetClock(id, 80 * 1000 * 1000);
-    /* Set SPI clock */
-    SPI_ClockCfg_Type clockCfg = {
-        1, /* Length of start condition */
-        1, /* Length of stop condition */
-        2, /* Length of data phase 0,affecting clock */
-        1, /* Length of data phase 1,affecting clock */
-        1  /* Length of interval between frame */
-    };
-    SPI_ClockConfig(id, &clockCfg);
+    hosal_dma_init();
 
-    spiCfg.continuousEnable = 1;
-    spiCfg.bitSequence = SPI_BIT_INVERSE_MSB_FIRST;
-    spiCfg.byteSequence = SPI_BYTE_INVERSE_BYTE0_FIRST;
-    spiCfg.clkPolarity = SPI_CLK_POLARITY_HIGH;
-    spiCfg.clkPhaseInv = SPI_CLK_PHASE_INVERSE_1;
-    spiCfg.frameSize = SPI_FRAME_SIZE_8;
-    spiCfg.deglitchEnable = 0;
+    /* spi port set */
+    spi.port = 1;
+    /* spi master mode */
+    spi.config.mode  = HOSAL_SPI_MODE_MASTER;
 
-    /* SPI config */
-    SPI_Init(id, &spiCfg);
-    SPI_SetDeglitchCount(id, 1);
+    /* 1: enable dma, 0: disable dma */
 
-    fifoCfg.txFifoThreshold = 4;
-    fifoCfg.txFifoDmaEnable = ENABLE;
-    fifoCfg.rxFifoThreshold = 4;
-    fifoCfg.rxFifoDmaEnable = ENABLE;
-
-    SPI_FifoConfig(id, &fifoCfg);
-    /* Enable spi master mode */
-    SPI_Enable(id, SPI_WORK_MODE_MASTER);
+    spi.config.dma_enable = 1;
+     /* 0: phase 0, polarity low
+      * 1: phase 1, polarity low
+      * 2: phase 0, polarity high
+      * 3: phase 0, polarity high
+      */
+    spi.config.polar_phase= 0;
+    spi.config.freq= 80 * 1000 * 1000;
+    spi.config.pin_clk = LCD_SCLK_PIN;
+    spi.config.pin_mosi= LCD_MOSI_PIN;
+    spi.config.pin_miso= -1;
+    /* init spi device */
+    hosal_spi_init(&spi);
     return 0;
 }
 
@@ -122,29 +109,30 @@ static void port_lcd_init(void)
 static void port_lcd_deinit(void)
 {
     lcd_gpio_deinit();
+    hosal_spi_finalize(&spi);
 }
 
 static void port_lcd_send_cmd(uint8_t cmd)
 {
     LCD_DC_L;
-    SPI_SendData(SPI1_ID, &cmd, 1, SPI_TIMEOUT_ENABLE);
+    hosal_spi_send(&spi, &cmd, 1, ~(uint32_t)0);//timout value mean blocking
 }
 
 static void port_lcd_send_bytes(uint8_t *data, int len)
 {
     LCD_DC_H;
-    SPI_SendData(SPI1_ID, data, len, SPI_TIMEOUT_ENABLE);
+    hosal_spi_send(&spi, data, len, ~(uint32_t)0);//timout value mean blocking
 }
 
 static void port_lcd_send_byte(uint8_t data)
 {
     LCD_DC_H;
-    SPI_SendData(SPI1_ID, &data, 1, SPI_TIMEOUT_ENABLE);
+    hosal_spi_send(&spi, &data, 1, ~(uint32_t)0);//timout value mean blocking
 }
 
 static void port_lcd_send_bytes2(uint8_t *data, int len)
 {
-    SPI_SendData(SPI1_ID, data, len, SPI_TIMEOUT_ENABLE);
+    hosal_spi_send(&spi, data, len, 2000);//noblocking
 }
 
 static void port_lcd_set_rst(int en)
@@ -317,25 +305,12 @@ int st7789v_spi_draw_point(uint16_t x, uint16_t y, uint16_t color)
     return 0;
 }
 
-/**
- * @brief Lcd draw area
- * @return
- */
-int st7789v_spi_draw_area(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+static void st7789v_spi_finish_cb(void* arg) 
 {
-    private.is_busy = 1;
-    uint16_t w = x2 - x1 + 1;
-    uint16_t h = y2 - y1 + 1;
-    st7789v_spi_set_area(0, 0, w, h);
-    for (int i = 0; i < w * h; i++) {
-        while (BL_GET_REG_BITS_VAL(BL_RD_REG(SPI1_BASE, SPI_FIFO_CONFIG_1), SPI_TX_FIFO_CNT) < 2)
-            ;
-        BL_WR_REG(SPI1_BASE, SPI_FIFO_WDATA, (color >> 8) & 0xff);
-        BL_WR_REG(SPI1_BASE, SPI_FIFO_WDATA, color & 0xff);
-    }
+    //NOTE:call this api is in interrupt
     if (private.cb) private.cb();
     private.is_busy = 0;
-    return 0;
+    hosal_spi_irq_callback_set(&spi, NULL, NULL); //unrigister finish callback
 }
 
 void st7789v_spi_draw_picture_nonblocking(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t *picture)
@@ -344,9 +319,40 @@ void st7789v_spi_draw_picture_nonblocking(uint16_t x1, uint16_t y1, uint16_t x2,
     uint16_t w = x2 - x1 + 1;
     uint16_t h = y2 - y1 + 1;
     st7789v_spi_set_area(x1, y1, w, h);
+    hosal_spi_irq_callback_set(&spi, st7789v_spi_finish_cb, NULL); //register dma tx finish callback
     port_lcd_send_bytes2((uint8_t *)picture, w * h * 2);
+    //if (private.cb) private.cb();
+    private.is_busy = 0;
+}
+
+/**
+ * @brief Lcd draw area
+ * @return
+ */
+int st7789v_spi_draw_area(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+{
+    private.is_busy = 1;
+    int res = 0;
+    uint16_t w = x2 - x1 + 1;
+    uint16_t h = y2 - y1 + 1;
+    uint16_t *buff = pvPortMalloc(w * h * 2);
+    if (!buff) {
+        res = -1;
+        printf("Malloc failed!\r\n");
+        goto _exit;
+    }
+
+    uint16_t tmp = (color << 8) | (color >> 8);
+    for (int i = 0; i < w * h; i ++) {
+        buff[i] = tmp;
+    }
+    st7789v_spi_set_area(x1, y1, w, h);
+    port_lcd_send_bytes((uint8_t *)buff, w * h * 2);
+    vPortFree(buff);
+_exit:
     if (private.cb) private.cb();
     private.is_busy = 0;
+    return 0;
 }
 
 void st7789v_spi_draw_picture_blocking(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t *picture)
@@ -366,17 +372,7 @@ int st7789v_spi_draw_is_busy(void) { return private.is_busy; }
  * @brief Lcd clear
  * @return
  */
-int st7789v_spi_clear(uint32_t color)
+int st7789v_spi_clear(uint16_t color)
 {
-    private.is_busy = 1;
-    st7789v_spi_set_area(0, 0, private.width, private.hight);
-    for (int i = 0; i < private.width * private.hight; i++) {
-        while (BL_GET_REG_BITS_VAL(BL_RD_REG(SPI1_BASE, SPI_FIFO_CONFIG_1), SPI_TX_FIFO_CNT) < 2)
-            ;
-        BL_WR_REG(SPI1_BASE, SPI_FIFO_WDATA, (color >> 8) & 0xff);
-        BL_WR_REG(SPI1_BASE, SPI_FIFO_WDATA, color & 0xff);
-    }
-    if (private.cb) private.cb();
-    private.is_busy = 0;
-    return 0;
+    return st7789v_spi_draw_area(0, 0, ST7789V_SPI_W - 1, ST7789V_SPI_H - 1, color);
 }

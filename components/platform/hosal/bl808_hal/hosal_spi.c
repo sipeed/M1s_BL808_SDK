@@ -227,10 +227,10 @@ static int lli_list_init(DMA_LLI_Ctrl_Type **pptxlli, DMA_LLI_Ctrl_Type **pprxll
 static int hosal_spi_dma_trans(hosal_spi_dev_t *arg, uint8_t *TxData, uint8_t *RxData, uint32_t Len, uint32_t timeout)
 {
     EventBits_t uxBits = 0;
+    static DMA_LLI_Ctrl_Type *ptxlli = NULL;
+    static DMA_LLI_Ctrl_Type *prxlli = NULL;
     DMA_LLI_Cfg_Type txllicfg;
     DMA_LLI_Cfg_Type rxllicfg;
-    DMA_LLI_Ctrl_Type *ptxlli = NULL;
-    DMA_LLI_Ctrl_Type *prxlli = NULL;
     spi_dma_priv_t *dma_arg = NULL;
     int ret;
 
@@ -240,6 +240,41 @@ static int hosal_spi_dma_trans(hosal_spi_dev_t *arg, uint8_t *TxData, uint8_t *R
     }
 
     dma_arg = (spi_dma_priv_t*)arg->priv;
+
+    uxBits = xEventGroupWaitBits(dma_arg->spi_event_group,
+                                     EVT_GROUP_SPI_TR,
+                                     pdFALSE,
+                                     pdTRUE,
+                                     timeout);
+
+    if ((uxBits & EVT_GROUP_SPI_TR) == EVT_GROUP_SPI_TR) {
+        if (dma_arg->tx_dma_ch >= 0) {
+            hosal_dma_chan_stop(dma_arg->tx_dma_ch);
+            hosal_dma_chan_release(dma_arg->tx_dma_ch);
+            dma_arg->tx_dma_ch = -1;
+        }
+        if (dma_arg->rx_dma_ch >= 0) {
+            hosal_dma_chan_stop(dma_arg->rx_dma_ch);
+            hosal_dma_chan_release(dma_arg->rx_dma_ch);
+            dma_arg->rx_dma_ch = -1;
+        }
+
+    } else {
+        blog_error(" trans timeout\r\n");
+        /*Serious error can not run again*/
+        while(1);
+    }
+    xEventGroupClearBits(dma_arg->spi_event_group, EVT_GROUP_SPI_TR);
+
+    if (ptxlli) {
+        vPortFree(ptxlli);
+        ptxlli = NULL;
+    }
+
+    if (prxlli) {
+        vPortFree(prxlli);
+        prxlli = NULL;
+    }
 
     if (TxData) {
         if (dma_arg->tx_dma_ch == -1) {
@@ -272,7 +307,6 @@ static int hosal_spi_dma_trans(hosal_spi_dev_t *arg, uint8_t *TxData, uint8_t *R
     rxllicfg.srcPeriph = DMA_REQ_SPI1_RX;
     rxllicfg.dstPeriph = DMA_REQ_NONE;
 
-    //xEventGroupClearBits(dma_arg->spi_event_group, EVT_GROUP_SPI_TR);
 
     if (arg->config.mode == HOSAL_SPI_MODE_MASTER) {
         SPI_Enable(arg->port, SPI_WORK_MODE_MASTER);
@@ -301,36 +335,13 @@ static int hosal_spi_dma_trans(hosal_spi_dev_t *arg, uint8_t *TxData, uint8_t *R
         hosal_dma_chan_start(dma_arg->tx_dma_ch);
     }
 
-    uxBits = xEventGroupWaitBits(dma_arg->spi_event_group,
-                                     EVT_GROUP_SPI_TR,
-                                     pdFALSE,
-                                     pdTRUE,
-                                     timeout);
-
-    //printf("group bits %x\r\n", (unsigned int)uxBits);
-    if ((uxBits & EVT_GROUP_SPI_TR) == EVT_GROUP_SPI_TR) {
-        if (dma_arg->tx_dma_ch >= 0) {
-            hosal_dma_chan_stop(dma_arg->tx_dma_ch);
-            hosal_dma_chan_release(dma_arg->tx_dma_ch);
-            dma_arg->tx_dma_ch = -1;
-        }
-        if (dma_arg->rx_dma_ch >= 0) {
-            hosal_dma_chan_stop(dma_arg->rx_dma_ch);
-            hosal_dma_chan_release(dma_arg->rx_dma_ch);
-            dma_arg->rx_dma_ch = -1;
-        }
-        if (arg->cb) {
-            arg->cb(arg->p_arg);
-        }
-    } else {
-        blog_error(" trans timeout\r\n");
-    }
-    xEventGroupClearBits(dma_arg->spi_event_group, EVT_GROUP_SPI_TR);
-    //uxBits = xEventGroupGetBits(dma_arg->spi_event_group);
-    //printf("after group bits %x\r\n", (unsigned int)uxBits);
-    vPortFree(ptxlli);
-    if (NULL != RxData) {
-        vPortFree(prxlli);
+    if (timeout == ~(uint32_t)0) {
+        /*blocking mode*/
+        uxBits = xEventGroupWaitBits(dma_arg->spi_event_group,
+                                         EVT_GROUP_SPI_TR,
+                                         pdFALSE,
+                                         pdTRUE,
+                                         portMAX_DELAY);
     }
 	return 0;
 }
@@ -352,6 +363,10 @@ static void hosal_spi_int_handler_tx(void *arg, uint32_t flag)
                     xEventGroupSetBitsFromISR(priv->spi_event_group,
                                                     EVT_GROUP_SPI_RX,
                                                     &xHigherPriorityTaskWoken);
+
+                    if (dev->cb) {
+                        dev->cb(dev->p_arg);
+                    }
                 }
 
             }
@@ -379,8 +394,10 @@ static void hosal_spi_int_handler_rx(void *arg, uint32_t flag)
 
                 if (priv->tx_dma_ch == -1) {
                     xEventGroupSetBitsFromISR(priv->spi_event_group, EVT_GROUP_SPI_TX, &xHigherPriorityTaskWoken);
+                    if (dev->cb) {
+                        dev->cb(dev->p_arg);
+                    }
                 }
-
             }
 
             if(xResult != pdFAIL) {
@@ -470,6 +487,7 @@ int hosal_spi_init(hosal_spi_dev_t *spi)
         priv->tx_dma_ch = -1;
         priv->rx_dma_ch = -1;
         dev->priv = priv;
+        xEventGroupSetBits(priv->spi_event_group, EVT_GROUP_SPI_TR); //set dma evt group for dma tx no block
     } else {
         spi_priv_t *priv = (spi_priv_t *)pvPortMalloc(sizeof(spi_priv_t));
         priv->spi_event_group = xEventGroupCreate();
@@ -545,7 +563,7 @@ int hosal_spi_finalize(hosal_spi_dev_t *spi)
     return 0;
 }
 
-int hosal_spi_send(hosal_spi_dev_t *spi, const uint8_t *data, uint16_t size, uint32_t timeout)
+int hosal_spi_send(hosal_spi_dev_t *spi, const uint8_t *data, uint32_t size, uint32_t timeout)
 {
     int ret;
 
