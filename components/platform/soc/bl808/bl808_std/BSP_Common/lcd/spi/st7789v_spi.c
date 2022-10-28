@@ -1,22 +1,24 @@
 #include "st7789v_spi.h"
+
+#include <hosal_dma.h>
+#include <hosal_spi.h>
+
 #include "bl808_glb.h"
 #include "bl808_spi.h"
-#include <hosal_spi.h>
-#include <hosal_dma.h>
 
-#define LCD_CS_PIN                  (GLB_GPIO_PIN_12)
-#define LCD_MOSI_PIN                (GLB_GPIO_PIN_25)
-#define LCD_SCLK_PIN                (GLB_GPIO_PIN_19)
-#define LCD_DC_PIN                  (GLB_GPIO_PIN_13)
-#define LCD_BL_PIN                  (GLB_GPIO_PIN_11)
-#define LCD_RST_PIN                 (GLB_GPIO_PIN_24)
+#define LCD_CS_PIN (GLB_GPIO_PIN_12)
+#define LCD_MOSI_PIN (GLB_GPIO_PIN_25)
+#define LCD_SCLK_PIN (GLB_GPIO_PIN_19)
+#define LCD_DC_PIN (GLB_GPIO_PIN_13)
+#define LCD_BL_PIN (GLB_GPIO_PIN_11)
+#define LCD_RST_PIN (GLB_GPIO_PIN_24)
 
-#define LCD_DC_H                    GLB_GPIO_Write(LCD_DC_PIN,1) 
-#define LCD_DC_L                    GLB_GPIO_Write(LCD_DC_PIN,0) 
-#define LCD_BL_H                    GLB_GPIO_Write(LCD_BL_PIN,1) 
-#define LCD_BL_L                    GLB_GPIO_Write(LCD_BL_PIN,0) 
-#define LCD_RST_H                   GLB_GPIO_Write(LCD_RST_PIN,1) 
-#define LCD_RST_L                   GLB_GPIO_Write(LCD_RST_PIN,0) 
+#define LCD_DC_H GLB_GPIO_Write(LCD_DC_PIN, 1)
+#define LCD_DC_L GLB_GPIO_Write(LCD_DC_PIN, 0)
+#define LCD_BL_H GLB_GPIO_Write(LCD_BL_PIN, 1)
+#define LCD_BL_L GLB_GPIO_Write(LCD_BL_PIN, 0)
+#define LCD_RST_H GLB_GPIO_Write(LCD_RST_PIN, 1)
+#define LCD_RST_L GLB_GPIO_Write(LCD_RST_PIN, 0)
 
 hosal_spi_dev_t spi = {0};
 static int lcd_gpio_init(void)
@@ -30,8 +32,7 @@ static int lcd_gpio_init(void)
     uint8_t gpiopins[] = {LCD_CS_PIN, LCD_MOSI_PIN, LCD_SCLK_PIN};
     cfg.gpioMode = GPIO_MODE_AF;
     cfg.gpioFun = GPIO_FUN_SPI1;
-    for (int i = 0; i < sizeof(gpiopins)/sizeof(gpiopins[0]); i ++)
-    {
+    for (int i = 0; i < sizeof(gpiopins) / sizeof(gpiopins[0]); i++) {
         cfg.gpioPin = gpiopins[i];
         GLB_GPIO_Init(&cfg);
     }
@@ -54,7 +55,7 @@ static int lcd_gpio_init(void)
 
 static int lcd_gpio_deinit(void)
 {
-	/* GPIO Init */
+    /* GPIO Init */
     GLB_GPIO_Cfg_Type cfg;
     cfg.pullType = GPIO_PULL_NONE;
     cfg.drive = 0;
@@ -64,12 +65,11 @@ static int lcd_gpio_deinit(void)
     cfg.gpioMode = GPIO_MODE_INPUT;
     cfg.gpioFun = GPIO_FUN_GPIO;
     cfg.outputMode = GPIO_PULL_NONE;
-    for (int i = 0; i < sizeof(gpiopins)/sizeof(gpiopins[0]); i ++)
-    {
+    for (int i = 0; i < sizeof(gpiopins) / sizeof(gpiopins[0]); i++) {
         cfg.gpioPin = gpiopins[i];
         GLB_GPIO_Init(&cfg);
     }
-	return 0;
+    return 0;
 }
 
 static int lcd_spi_init(int id)
@@ -79,21 +79,21 @@ static int lcd_spi_init(int id)
     /* spi port set */
     spi.port = 1;
     /* spi master mode */
-    spi.config.mode  = HOSAL_SPI_MODE_MASTER;
+    spi.config.mode = HOSAL_SPI_MODE_MASTER;
 
     /* 1: enable dma, 0: disable dma */
 
     spi.config.dma_enable = 1;
-     /* 0: phase 0, polarity low
-      * 1: phase 1, polarity low
-      * 2: phase 0, polarity high
-      * 3: phase 0, polarity high
-      */
-    spi.config.polar_phase= 0;
-    spi.config.freq= 80 * 1000 * 1000;
+    /* 0: phase 0, polarity low
+     * 1: phase 1, polarity low
+     * 2: phase 0, polarity high
+     * 3: phase 0, polarity high
+     */
+    spi.config.polar_phase = 0;
+    spi.config.freq = 80 * 1000 * 1000;
     spi.config.pin_clk = LCD_SCLK_PIN;
-    spi.config.pin_mosi= LCD_MOSI_PIN;
-    spi.config.pin_miso= -1;
+    spi.config.pin_mosi = LCD_MOSI_PIN;
+    spi.config.pin_miso = -1;
     /* init spi device */
     hosal_spi_init(&spi);
     return 0;
@@ -115,24 +115,24 @@ static void port_lcd_deinit(void)
 static void port_lcd_send_cmd(uint8_t cmd)
 {
     LCD_DC_L;
-    hosal_spi_send(&spi, &cmd, 1, ~(uint32_t)0);//timout value mean blocking
+    hosal_spi_send(&spi, &cmd, 1, ~(uint32_t)0);  // timout value mean blocking
 }
 
 static void port_lcd_send_bytes(uint8_t *data, int len)
 {
     LCD_DC_H;
-    hosal_spi_send(&spi, data, len, ~(uint32_t)0);//timout value mean blocking
+    hosal_spi_send(&spi, data, len, ~(uint32_t)0);  // timout value mean blocking
 }
 
 static void port_lcd_send_byte(uint8_t data)
 {
     LCD_DC_H;
-    hosal_spi_send(&spi, &data, 1, ~(uint32_t)0);//timout value mean blocking
+    hosal_spi_send(&spi, &data, 1, ~(uint32_t)0);  // timout value mean blocking
 }
 
 static void port_lcd_send_bytes2(uint8_t *data, int len)
 {
-    hosal_spi_send(&spi, data, len, 2000);//noblocking
+    hosal_spi_send(&spi, data, len, 2000);  // noblocking
 }
 
 static void port_lcd_set_rst(int en)
@@ -158,7 +158,6 @@ static void port_lcd_set_dc(int en)
     else
         LCD_DC_L;
 }
-
 
 /***************************************************************************/
 #define SOFTWARE_RESET 0x01
@@ -249,16 +248,16 @@ int st7789v_spi_deinit(void)
 
 void st7789v_spi_async_callback_register(void (*callback)(void)) { private.cb = callback; }
 
-int st7789v_spi_set_dir(uint8_t dir, uint8_t mir_flag) 
+int st7789v_spi_set_dir(uint8_t dir, uint8_t mir_flag)
 {
     uint8_t data = 0x00;
     private.dir = dir;
 
-    if(private.dir == 0){
+    if (private.dir == 0) {
         data = 0x00;
         private.width = ST7789V_SPI_W;
         private.hight = ST7789V_SPI_H;
-    }else if(private.dir == 1){
+    } else if (private.dir == 1) {
         data = 0x60;
         private.width = ST7789V_SPI_H;
         private.hight = ST7789V_SPI_W;
@@ -267,16 +266,16 @@ int st7789v_spi_set_dir(uint8_t dir, uint8_t mir_flag)
     port_lcd_send_cmd(MEMORY_ACCESS_CTL);
     port_lcd_send_bytes(&data, 1);
 
-    return private.dir; 
+    return private.dir;
 }
 
 int st7789v_spi_set_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
 {
     uint8_t data[4] = {0};
-    if(private.dir == 0){
+    if (private.dir == 0) {
         x += ST7789V_SPI_OFFSET_X;
         y += ST7789V_SPI_OFFSET_Y;
-    }else if(private.dir == 1){
+    } else if (private.dir == 1) {
         x += ST7789V_SPI_OFFSET_Y;
         y += ST7789V_SPI_OFFSET_X;
     }
@@ -302,6 +301,9 @@ int st7789v_spi_set_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
 
 int st7789v_spi_draw_point(uint16_t x, uint16_t y, uint16_t color)
 {
+    while (private.is_busy) {
+        vTaskDelay(1);
+    }
     private.is_busy = 1;
     st7789v_spi_set_area(x, y, 1, 1);
     port_lcd_send_bytes((uint8_t *)&color, 2);
@@ -310,24 +312,25 @@ int st7789v_spi_draw_point(uint16_t x, uint16_t y, uint16_t color)
     return 0;
 }
 
-static void st7789v_spi_finish_cb(void* arg) 
+static void st7789v_spi_finish_cb(void *arg)
 {
-    //NOTE:call this api is in interrupt
+    // NOTE:call this api is in interrupt
     if (private.cb) private.cb();
     private.is_busy = 0;
-    hosal_spi_irq_callback_set(&spi, NULL, NULL); //unrigister finish callback
+    hosal_spi_irq_callback_set(&spi, NULL, NULL);  // unrigister finish callback
 }
 
 void st7789v_spi_draw_picture_nonblocking(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t *picture)
 {
+    while (private.is_busy) {
+        vTaskDelay(1);
+    }
     private.is_busy = 1;
     uint16_t w = x2 - x1 + 1;
     uint16_t h = y2 - y1 + 1;
     st7789v_spi_set_area(x1, y1, w, h);
-    hosal_spi_irq_callback_set(&spi, st7789v_spi_finish_cb, NULL); //register dma tx finish callback
+    hosal_spi_irq_callback_set(&spi, st7789v_spi_finish_cb, NULL);  // register dma tx finish callback
     port_lcd_send_bytes2((uint8_t *)picture, w * h * 2);
-    //if (private.cb) private.cb();
-    private.is_busy = 0;
 }
 
 /**
@@ -336,6 +339,9 @@ void st7789v_spi_draw_picture_nonblocking(uint16_t x1, uint16_t y1, uint16_t x2,
  */
 int st7789v_spi_draw_area(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
+    while (private.is_busy) {
+        vTaskDelay(1);
+    }
     private.is_busy = 1;
     int res = 0;
     uint16_t w = x2 - x1 + 1;
@@ -348,20 +354,24 @@ int st7789v_spi_draw_area(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, ui
     }
 
     uint16_t tmp = (color << 8) | (color >> 8);
-    for (int i = 0; i < w * h; i ++) {
+    for (int i = 0; i < w * h; i++) {
         buff[i] = tmp;
     }
     st7789v_spi_set_area(x1, y1, w, h);
     port_lcd_send_bytes((uint8_t *)buff, w * h * 2);
     vPortFree(buff);
 _exit:
-    if (private.cb) private.cb();
+    if (private.cb) private
+    .cb();
     private.is_busy = 0;
     return res;
 }
 
 void st7789v_spi_draw_picture_blocking(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t *picture)
 {
+    while (private.is_busy) {
+        vTaskDelay(1);
+    }
     private.is_busy = 1;
     uint16_t w = x2 - x1 + 1;
     uint16_t h = y2 - y1 + 1;
