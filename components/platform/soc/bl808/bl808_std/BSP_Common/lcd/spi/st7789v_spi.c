@@ -258,6 +258,9 @@ int st7789v_spi_set_dir(uint8_t dir, uint8_t mir_flag)
         data = 0x00;
     }else if(private.dir == 1){
         data = 0x60;
+        uint16_t tmp = private.width;
+        private.width = private.hight;
+        private.hight = tmp;
     }
 
     port_lcd_send_cmd(MEMORY_ACCESS_CTL);
@@ -300,7 +303,7 @@ int st7789v_spi_draw_point(uint16_t x, uint16_t y, uint16_t color)
 {
     private.is_busy = 1;
     st7789v_spi_set_area(x, y, 1, 1);
-    port_lcd_send_bytes2((uint8_t *)&color, 2);
+    port_lcd_send_bytes((uint8_t *)&color, 2);
     if (private.cb) private.cb();
     private.is_busy = 0;
     return 0;
@@ -353,7 +356,7 @@ int st7789v_spi_draw_area(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, ui
 _exit:
     if (private.cb) private.cb();
     private.is_busy = 0;
-    return 0;
+    return res;
 }
 
 void st7789v_spi_draw_picture_blocking(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t *picture)
@@ -362,7 +365,7 @@ void st7789v_spi_draw_picture_blocking(uint16_t x1, uint16_t y1, uint16_t x2, ui
     uint16_t w = x2 - x1 + 1;
     uint16_t h = y2 - y1 + 1;
     st7789v_spi_set_area(x1, y1, w, h);
-    port_lcd_send_bytes2((uint8_t *)picture, w * h * 2);
+    port_lcd_send_bytes((uint8_t *)picture, w * h * 2);
     if (private.cb) private.cb();
     private.is_busy = 0;
 }
