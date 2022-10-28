@@ -256,11 +256,12 @@ int st7789v_spi_set_dir(uint8_t dir, uint8_t mir_flag)
 
     if(private.dir == 0){
         data = 0x00;
+        private.width = ST7789V_SPI_W;
+        private.hight = ST7789V_SPI_H;
     }else if(private.dir == 1){
         data = 0x60;
-        uint16_t tmp = private.width;
-        private.width = private.hight;
-        private.hight = tmp;
+        private.width = ST7789V_SPI_H;
+        private.hight = ST7789V_SPI_W;
     }
 
     port_lcd_send_cmd(MEMORY_ACCESS_CTL);
@@ -378,5 +379,5 @@ int st7789v_spi_draw_is_busy(void) { return private.is_busy; }
  */
 int st7789v_spi_clear(uint16_t color)
 {
-    return st7789v_spi_draw_area(0, 0, ST7789V_SPI_W - 1, ST7789V_SPI_H - 1, color);
+    return st7789v_spi_draw_area(0, 0, private.width - 1, private.hight - 1, color);
 }
