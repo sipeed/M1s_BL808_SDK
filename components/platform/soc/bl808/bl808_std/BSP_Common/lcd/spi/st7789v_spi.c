@@ -195,7 +195,12 @@ static struct {
                              {0x02, 0x02, {PIXEL_FORMAT_SET, 0x55}},
                              {0x01, 0x0f, {INVERSION_DISPALY_ON}},
                              {0x01, 0x00, {DISPALY_ON}},
-                             {0x00, 0x00, {0xC6, 0x00}},
+#if ST7789V_SPI_DIR == 1
+                             {0x02, 0x00, {MEMORY_ACCESS_CTL, 0x60}},
+#else
+                             {0x02, 0x00, {MEMORY_ACCESS_CTL, 0x00}},
+#endif
+                             {0x02, 0x00, {0xC6, 0x00}},
                              {0x00, 0x00, {}}};
 
 static void st7789v_spi_init_seq(void)
@@ -231,7 +236,7 @@ int st7789v_spi_init(void)
 {
     private.width = ST7789V_SPI_W;
     private.hight = ST7789V_SPI_H;
-    private.dir = 0;
+    private.dir = ST7789V_SPI_DIR;
     _mf_lcd_init();
     return 0;
 }
@@ -255,12 +260,22 @@ int st7789v_spi_set_dir(uint8_t dir, uint8_t mir_flag)
 
     if (private.dir == 0) {
         data = 0x00;
-        private.width = ST7789V_SPI_W;
-        private.hight = ST7789V_SPI_H;
-    } else if (private.dir == 1) {
-        data = 0x60;
+#if ST7789V_SPI_DIR
         private.width = ST7789V_SPI_H;
         private.hight = ST7789V_SPI_W;
+#else
+        private.width = ST7789V_SPI_W;
+        private.hight = ST7789V_SPI_H;
+#endif
+    } else if (private.dir == 1) {
+        data = 0x60;
+#if ST7789V_SPI_DIR
+        private.width = ST7789V_SPI_W;
+        private.hight = ST7789V_SPI_H;
+#else
+        private.width = ST7789V_SPI_H;
+        private.hight = ST7789V_SPI_W;
+#endif
     }
 
     port_lcd_send_cmd(MEMORY_ACCESS_CTL);

@@ -3,8 +3,14 @@
 
 #include "stdint.h"
 
+#define ST7789V_SPI_DIR (0)
+#if ST7789V_SPI_DIR == 1
+#define ST7789V_SPI_W 280
+#define ST7789V_SPI_H 240
+#else
 #define ST7789V_SPI_W 240
 #define ST7789V_SPI_H 280
+#endif
 
 #define ST7789V_SPI_OFFSET_X 0
 #define ST7789V_SPI_OFFSET_Y 20

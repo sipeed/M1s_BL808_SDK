@@ -4,20 +4,20 @@
  */
 
 /*Copy this file as "lv_port_indev.c" and set this value to "1" to enable content*/
-#if 0
+#if 1
 
 /*********************
  *      INCLUDES
  *********************/
 #include "lv_port_indev.h"
-#include "bflb_platform.h"
-#include "hal_gpio.h"
-#include "hal_dma.h"
+#include <bl808_glb.h>
+#include <bl808_i2c.h>
+#include <lcd.h>
 
 /*********************
  *      DEFINES
  *********************/
-
+#define TOUCH_CST816X_EN            (1)
 /**********************
  *      TYPEDEFS
  **********************/
@@ -196,34 +196,184 @@ void lv_port_indev_init(void)
 /*------------------
  * Touchpad
  * -----------------*/
-#include "touch.h"
-#include "hal_spi.h"
+
+#if TOUCH_CST816X_EN
+#define CST816X_DEV_ADDR            0x15
+
+#define CST816X_REG_GESTUREID       0x01
+#define CST816X_REG_FINGERNUM       0x02
+// xxxx.... STATUS
+// ....xxxx XposH
+#define CST816X_REG_XPOSH           0x03
+#define CST816X_REG_XPOSL           0x04
+// ....xxxx YposH
+#define CST816X_REG_YPOSH           0x05
+#define CST816X_REG_YPOSL           0x06
+
+#define CST816X_REG_CHIPID          0xA7
+#define CST816X_REG_PROJID          0xA8
+#define CST816X_REG_FWVERSION       0xA9
+#define CST816X_REG_FACTORYID       0xAA
+
+// 0x03 -> sleep and disable wake up
+#define CST816X_REG_SLEEPMODE       0xE5
+// ......x. EnFatRst
+// .......x En2FRst
+#define CST816X_REG_ERRRESETCTL     0xEA
+#define CST816X_REG_LONGPRESSTICK   0xEB
+
+/* 0x01 CST816X_REG_GESTUREID */
+#define CST816X_REG_GESTUREID_NONE          0x00
+#define CST816X_REG_GESTUREID_SWIPE_UP      0x01
+#define CST816X_REG_GESTUREID_SWIPE_DOWN    0x02
+#define CST816X_REG_GESTUREID_SWIPE_LEFT    0x03
+#define CST816X_REG_GESTUREID_SWIPE_RIGHT   0x04
+#define CST816X_REG_GESTUREID_CLICK         0x05
+#define CST816X_REG_GESTUREID_DOUBLE_CLICK  0x0b
+#define CST816X_REG_GESTUREID_LONG_PRESS    0x0c
+
+/* 0x02 CST816X_REG_FINGERNUM */
+#define CST816X_REG_FINGERNUM_NONE          0x00
+#define CST816X_REG_FINGERNUM_ONE           0x01
+
+/* 0x03 CST816X_REG_XPOSH xxxx.... STATUS */
+#define CST816X_REG_STATUS_FIRST_PRESS      0x0
+#define CST816X_REG_STATUS_LONG_PRESS       0x8
+#define CST816X_REG_STATUS_LIFTUP           0x4
+
+#define PIN_CTP_RST (24)
+#define PIN_CTP_INT (32)
+
+#define PIN_CTP_SCK (6)
+#define PIN_CTP_SDA (7)
+
+void cst816x_gpio_init(uint8_t i2c_scl_pin, uint8_t i2c_sda_pin, uint8_t cts_rst_pin, uint8_t cts_int_pin)
+{
+    GLB_GPIO_Cfg_Type cfg;
+    cfg.pullType = GPIO_PULL_UP;
+    cfg.drive = 0;
+    cfg.smtCtrl = 1;
+
+    cfg.gpioMode = GPIO_MODE_AF;
+    cfg.gpioFun = GPIO_FUN_I2C2;
+    cfg.gpioPin = i2c_scl_pin;
+    GLB_GPIO_Init(&cfg);
+    cfg.gpioPin = i2c_sda_pin;
+    GLB_GPIO_Init(&cfg);
+
+    cfg.outputMode = GPIO_OUTPUT_VALUE_MODE;
+    cfg.gpioMode = GPIO_MODE_OUTPUT;
+    cfg.gpioFun = GPIO_FUN_GPIO;
+    cfg.gpioPin = cts_rst_pin;
+    GLB_GPIO_Init(&cfg);
+
+    cfg.gpioMode = GPIO_MODE_INPUT;
+    cfg.gpioFun = GPIO_FUN_GPIO;
+    cfg.gpioPin = cts_int_pin;
+    GLB_GPIO_Init(&cfg);
+}
+
+static void touch_init(void)
+{
+    cst816x_gpio_init(PIN_CTP_SCK, PIN_CTP_SDA, PIN_CTP_RST, PIN_CTP_INT);
+    uint8_t buf[6];
+    I2C_Transfer_Cfg cfg;
+    cfg.slaveAddr10Bit = false;
+    cfg.stopEveryByte = false;
+    cfg.slaveAddr = CST816X_DEV_ADDR;
+    cfg.clk = 40000;
+
+    cfg.subAddr = CST816X_REG_CHIPID;
+    cfg.subAddrSize = 1;
+    cfg.dataSize = 4;
+    cfg.data = buf;
+#if 0
+    /* hardware reset cst816x */
+    GLB_GPIO_Write(PIN_CTP_RST, 0);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    GLB_GPIO_Write(PIN_CTP_RST, 1);
+    vTaskDelay(pdMS_TO_TICKS(100));
+#endif
+    if (SUCCESS == I2C_MasterReceiveBlocking(I2C0_MM_ID, &cfg)) {
+        uint8_t chip_id = buf[0];
+        uint8_t proj_id = buf[1];
+        uint8_t fw_ver = buf[2];
+        uint8_t factory_id = buf[3];
+        printf(
+            "[cst816x]\r\n"
+            "\tchip_id: %d\r\n"
+            "\tproj_id: %d\r\n"
+            "\tfw_ver: %d\r\n"
+            "\tfactory_id: %d\r\n"
+            "\r\n",
+            chip_id, proj_id, fw_ver, factory_id);
+    } else {
+        printf("timeout?\r\n");
+    } 
+}
+
+static int touch_read(uint16_t *x, uint16_t *y)
+{
+    uint8_t buf[6] = {0};
+    I2C_Transfer_Cfg cfg;
+    cfg.slaveAddr10Bit = false;
+    cfg.stopEveryByte = false;
+    cfg.slaveAddr = CST816X_DEV_ADDR;
+    cfg.clk = 40000;
+    cfg.subAddr = CST816X_REG_GESTUREID;
+    cfg.subAddrSize = 1;
+    cfg.dataSize = 6;
+    cfg.data = buf;
+    if (SUCCESS != I2C_MasterReceiveBlocking(I2C0_MM_ID, &cfg)) {
+        return 0;
+    }
+
+    uint8_t status = buf[2] >> 4;
+    uint16_t pos_x = buf[2] & 0x0F;
+    pos_x = (pos_x << 8) | buf[3];
+    uint16_t pos_y = buf[4] & 0x0F;
+    pos_y = (pos_y << 8) | buf[5];
+    printf("pos: (%-3u, %-3u)[%u]\r\n", pos_x, pos_y, status);
+    if (status != 8) {
+        return 0;
+    }
+
+#ifdef LCD_SPI_ST7789V
+#if ST7789V_SPI_DIR == 1
+    pos_x ^= pos_y;
+    pos_y ^= pos_x;
+    pos_x ^= pos_y;
+    pos_y = ST7789V_SPI_H - pos_y;
+#endif
+#endif
+
+
+    *x = pos_x;
+    *y = pos_y;
+    return 1;
+}
+#endif
 
 /*Initialize your touchpad*/
 static void touchpad_init(void)
 {
+#if TOUCH_CST816X_EN
     touch_init();
+#endif
 }
 
 /* Will be called by the library to read the touchpad */
 static void touchpad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
-    static lv_coord_t last_x = 0;
-    static lv_coord_t last_y = 0;
-    uint8_t point_num = 0;
-    touch_coord_t touch_coord;
-
-    touch_read(&point_num, &touch_coord, 1);
-
-    /*Save the pressed coordinates and the state*/
-    if (point_num) {
-        last_x = touch_coord.coord_x;
-        last_y = touch_coord.coord_y;
+    static uint16_t last_x = 0;
+    static uint16_t last_y = 0;
+#if TOUCH_CST816X_EN
+    if (touch_read(&last_x, &last_y)) {
         data->state = LV_INDEV_STATE_PR;
     } else {
         data->state = LV_INDEV_STATE_REL;
     }
-
+#endif
     /*Set the last pressed coordinates*/
     data->point.x = last_x;
     data->point.y = last_y;
