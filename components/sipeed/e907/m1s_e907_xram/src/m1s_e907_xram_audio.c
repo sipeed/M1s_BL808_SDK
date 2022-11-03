@@ -12,7 +12,7 @@
 #include "bl808_glb.h"
 #include "queue.h"
 #pragma GCC diagnostic ignored "-Wint-conversion"
-struct {
+static struct {
     uint8_t flush_id;
     uint8_t start;
     uint8_t *buf[2];

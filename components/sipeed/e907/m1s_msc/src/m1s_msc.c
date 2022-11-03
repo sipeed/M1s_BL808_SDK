@@ -13,6 +13,8 @@
 #include <usbd_core.h>
 #include <usbd_msc.h>
 
+#pragma GCC diagnostic ignored "-Wint-conversion"
+
 static struct {
     int fatfs_num;
     sd_dev_t sd;
@@ -31,7 +33,8 @@ static struct {
 #define USBD_OUT_EP (0x01)
 #define USBD_IN_EP (0x81)
 static uint8_t usbd_descriptor[] = {
-    USB_DEVICE_DESCRIPTOR_INIT(USB_2_0, 0x00, 0x00, 0x00, USBD_VID, USBD_PID, 0x0001, 0x01), USB_CONFIG_DESCRIPTOR_INIT(USB_MSC_DESC_SIZ, 0x02, 0x01, USB_CONFIG_BUS_POWERED, 100),
+    USB_DEVICE_DESCRIPTOR_INIT(USB_2_0, 0x00, 0x00, 0x00, USBD_VID, USBD_PID, 0x0001, 0x01),
+    USB_CONFIG_DESCRIPTOR_INIT(USB_MSC_DESC_SIZ, 0x02, 0x01, USB_CONFIG_BUS_POWERED, 100),
     MSC_DESCRIPTOR_INIT(0, USBD_OUT_EP, USBD_IN_EP, 0),
     ///////////////////////////////////////
     /// string0 descriptor
@@ -112,9 +115,8 @@ static void upload_c906_firmware(uint8_t *d0fw, uint32_t size)
     bl_mtd_close(handle);
     if (info.offset != 0 && info.size >= size) {
         info.offset += 0x1000;
-        if (bl_flash_erase(info.offset, size)
-            || bl_flash_write(info.offset, d0fw, size)
-            || bl_flash_read(info.offset, private.check_d0fw_buff, size)) {
+        if (bl_flash_erase(info.offset, size) || bl_flash_write(info.offset, d0fw, size) ||
+            bl_flash_read(info.offset, private.check_d0fw_buff, size)) {
             printf("flash operation failed..\r\n");
             return;
         }
@@ -132,12 +134,31 @@ static void upload_firmware_cb(TCHAR *path)
     FATFS fs;
     FIL fil;
     FRESULT res;
+    DIR dir;
     FILINFO fno;
     UINT br;
-    TCHAR fw_path[50];
-#define C906_FW "d0fw.bin"
-    snprintf(fw_path, sizeof(fw_path), "%s%s", path, C906_FW);
+    TCHAR fw_path[50] = {0};
+
     if (FR_OK != (res = f_mount(&fs, path, 0))) goto _exit;
+
+    if (FR_OK != (res = f_opendir(&dir, path))) goto _exit;
+    while (1) {
+        res = f_readdir(&dir, &fno);
+        if (res != FR_OK || fno.fname[0] == 0) break;
+
+        if (!(fno.fattrib & AM_DIR)) {
+            printf("%s%s\r\n", path, fno.fname);
+            int len = strlen(fno.fname);
+            if (fno.fname[len - 4] == '.' && fno.fname[len - 3] == 'b' && fno.fname[len - 2] == 'i' &&
+                fno.fname[len - 1] == 'n') {
+                snprintf(fw_path, sizeof(fw_path), "%s%s", path, fno.fname);
+                printf("find bin:%s\r\n", fw_path);
+                break;
+            }
+        }
+    }
+    f_closedir(&dir);
+
     if (FR_OK != (res = f_stat(fw_path, &fno))) goto _exit;
     if (FR_OK != (res = f_open(&fil, fw_path, FA_READ))) goto _exit;
     if (FR_OK != (res = f_read(&fil, private.cache_d0fw_buff, fno.fsize, &br))) goto _exit;

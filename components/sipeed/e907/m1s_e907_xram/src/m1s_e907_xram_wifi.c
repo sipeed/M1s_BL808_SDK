@@ -24,7 +24,7 @@
 #include "queue.h"
 #include "softcrc.h"
 
-struct {
+static struct {
     uint16_t port;
     char ip[16];
     TaskHandle_t upload_stream_handle;
