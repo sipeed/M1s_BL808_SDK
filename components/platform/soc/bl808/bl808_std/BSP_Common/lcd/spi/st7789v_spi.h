@@ -3,7 +3,7 @@
 
 #include "stdint.h"
 
-#define ST7789V_SPI_DIR (0)
+#define ST7789V_SPI_DIR (1)
 #if ST7789V_SPI_DIR == 1
 #define ST7789V_SPI_W 280
 #define ST7789V_SPI_H 240
