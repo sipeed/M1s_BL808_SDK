@@ -29,12 +29,12 @@ static struct {
 #define USBD_VID 0xffff
 #define USBD_PID 0xffff
 #define USBD_LANGID_STRING 1033
-#define USB_MSC_DESC_SIZ (unsigned long)(9 + 9 + 7 + 7)
+#define USB_MSC_DESC_SIZ (unsigned long)(9 + MSC_DESCRIPTOR_LEN)
 #define USBD_OUT_EP (0x01)
 #define USBD_IN_EP (0x81)
 static uint8_t usbd_descriptor[] = {
     USB_DEVICE_DESCRIPTOR_INIT(USB_2_0, 0x00, 0x00, 0x00, USBD_VID, USBD_PID, 0x0001, 0x01),
-    USB_CONFIG_DESCRIPTOR_INIT(USB_MSC_DESC_SIZ, 0x02, 0x01, USB_CONFIG_BUS_POWERED, 100),
+    USB_CONFIG_DESCRIPTOR_INIT(USB_MSC_DESC_SIZ, 0x01, 0x01, USB_CONFIG_BUS_POWERED, 100),
     MSC_DESCRIPTOR_INIT(0, USBD_OUT_EP, USBD_IN_EP, 0),
     ///////////////////////////////////////
     /// string0 descriptor
