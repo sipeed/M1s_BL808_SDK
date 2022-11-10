@@ -2,9 +2,9 @@
 
 #include <FreeRTOS_POSIX/errno.h>
 #include <aos/kernel.h>
+#include <lfs.h>
 #include <sys/fcntl.h>
 #include <sys/unistd.h>
-#include <lfs.h>
 #include <vfs.h>
 #include <vfs_inode.h>
 #include <vfs_register.h>
@@ -70,7 +70,8 @@ static int lfs_spi_flash_erase(const struct lfs_config *cfg, lfs_block_t block)
 {
     // check if erase is valid
     LFS_ASSERT(block < cfg->block_count);
-    return m1s_xram_flash_erase(LFS_OFFSET_IN_FLASH, block * cfg->block_size) ? LFS_ERR_IO : LFS_ERR_OK;
+    return m1s_xram_flash_erase(LFS_OFFSET_IN_FLASH + block * cfg->block_size, cfg->block_size) ? LFS_ERR_IO
+                                                                                                : LFS_ERR_OK;
 }
 
 /*
@@ -89,12 +90,12 @@ static struct lfs_config cfg = {
     .sync = lfs_spi_flash_sync,
 
     // block device configuration
-    .read_size = 64,
-    .prog_size = 64,
+    .read_size = 4096,
+    .prog_size = 4096,
     .block_size = 4096,
-    .block_count = 256,
-    .cache_size = 64,
-    .lookahead_size = 64,
+    .block_count = 10 * 256, /* 10 MB */
+    .cache_size = 4096,
+    .lookahead_size = 8192,
     .block_cycles = 500,
 };
 
