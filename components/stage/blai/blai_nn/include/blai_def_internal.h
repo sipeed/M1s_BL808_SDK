@@ -2,8 +2,8 @@
 #define __BLAI_DEF_INTERNAL_H__
 
 //#define BLAI_DEBUG
-#define BLAI_PROFILING
-#define BLAI_SHOW_NETWORK
+//#define BLAI_PROFILING
+//#define BLAI_SHOW_NETWORK
 
 #ifdef BLAI_DEBUG
 #define BLAI_NPU_OPS_DEBUG
