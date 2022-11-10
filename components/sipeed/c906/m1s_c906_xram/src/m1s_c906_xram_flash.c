@@ -9,8 +9,6 @@
 /****************************************************************************
  *                                Send Handle
  ****************************************************************************/
-static m1s_xram_flash_t op = {0};
-
 static int m1s_xram_flash_operation(m1s_xram_flash_t *obj, enum flash_operation operation)
 {
     struct xram_hdr tx_hdr;
@@ -36,6 +34,7 @@ static int m1s_xram_flash_operation(m1s_xram_flash_t *obj, enum flash_operation 
     obj->offset += 0x1000;
     bytes = XRAMRingWrite(XRAM_OP_QUEUE, &tx_hdr, sizeof(struct xram_hdr));
     bytes += XRAMRingWrite(XRAM_OP_QUEUE, obj, sizeof(m1s_xram_flash_t));
+    csi_dcache_clean_invalid();
     if (bytes != sizeof(struct xram_hdr) + sizeof(m1s_xram_flash_t)) {
         printf("xram write operate err.\r\n");
     } else {
@@ -48,19 +47,18 @@ static int m1s_xram_flash_operation(m1s_xram_flash_t *obj, enum flash_operation 
     }
 
     m1s_c906_xram_mutex_unlock();
-    if (0 == ret && XRAM_FLASH_ERASE != operation) {
-        csi_dcache_clean_invalid_range((uint64_t)obj->addr, obj->len);
-    }
     return ret;
 }
 
 int m1s_xram_flash_read(uint32_t offset, void *const addr, uint32_t len)
 {
     if (0 == len) return 0;
-    op.offset = offset;
-    op.addr = addr;
-    op.len = len;
-    csi_dcache_clean_invalid();
+    m1s_xram_flash_t op = {
+        .offset = offset,
+        .addr = addr,
+        .len = len,
+    };
+
     int ret = m1s_xram_flash_operation(&op, XRAM_FLASH_READ);
     return ret;
 }
@@ -68,17 +66,21 @@ int m1s_xram_flash_read(uint32_t offset, void *const addr, uint32_t len)
 int m1s_xram_flash_write(uint32_t offset, void *const addr, uint32_t len)
 {
     if (0 == len) return 0;
-    op.offset = offset;
-    op.addr = addr;
-    op.len = len;
-    csi_dcache_clean();
+    m1s_xram_flash_t op = {
+        .offset = offset,
+        .addr = addr,
+        .len = len,
+    };
     return m1s_xram_flash_operation(&op, XRAM_FLASH_WRITE);
 }
 
 int m1s_xram_flash_erase(uint32_t offset, uint32_t len)
 {
     if (0 == len) return 0;
-    op.offset = offset;
-    op.len = len;
+    m1s_xram_flash_t op = {
+        .offset = offset,
+        .addr = 0,
+        .len = len,
+    };
     return m1s_xram_flash_operation(&op, XRAM_FLASH_ERASE);
 }

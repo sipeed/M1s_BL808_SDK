@@ -16,6 +16,16 @@
 /****************************************************************************
  *                               Recv Handle
  ****************************************************************************/
+// static inline void log_hex(unsigned int *a, uint32_t l)
+// {
+//     l /= 4;
+//     for (uint32_t i = 0; i < l; i++) {
+//         if ((i & 0x3) == 0) printf("%08x:", (unsigned int)&a[i]);
+//         printf(" %08x", a[i]);
+//         if ((i & 0x3) == 0x3) printf("\r\n");
+//     }
+//     if (l & 0x3) printf("\r\n");
+// }
 
 static int xram_flash_read(m1s_xram_flash_t *op)
 {
@@ -27,7 +37,8 @@ static int xram_flash_read(m1s_xram_flash_t *op)
     if (0 != bl_flash_read(op->offset, op->addr, op->len)) {
         err = FLASH_OP_ERR;
     }
-    csi_dcache_clean_range((uint32_t)op->addr, op->len);
+    // log_hex(op->addr, op->len);
+    csi_dcache_clean_invalid_range((uint8_t *)op->addr, op->len);
 
     /* xram response */
     hdr.type = M1S_XRAM_TYPE_FLASH;
@@ -48,7 +59,8 @@ static int xram_flash_write(m1s_xram_flash_t *op)
     uint32_t bytes;
     enum flash_op_err err = FLASH_OP_OK;
 
-    csi_dcache_invalid_range((uint32_t)op->addr, op->len);
+    csi_dcache_invalid_range((uint8_t *)op->addr, op->len);
+    // log_hex(op->addr, op->len);
     /* flash deinit */
     if (0 != bl_flash_write(op->offset, op->addr, op->len)) {
         err = FLASH_OP_ERR;
