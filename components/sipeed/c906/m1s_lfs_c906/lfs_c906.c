@@ -96,7 +96,7 @@ static struct lfs_config cfg = {
     .block_count = 10 * 256, /* 10 MB */
     .cache_size = 4096,
     .lookahead_size = 8192,
-    .block_cycles = 500,
+    .block_cycles = 512,
 };
 
 /* ----------------------aos----------------------- */
