@@ -24,7 +24,7 @@ MEMORY
     code_memory (rx)  : ORIGIN = 0x50100000, LENGTH = 1M
     itcm_memory (rx)  : ORIGIN = 0x3EFF0000, LENGTH = 32K
     dtcm_memory (rx)  : ORIGIN = 0x3EFF8000, LENGTH = 32K
-    ram_memory  (!rx) : ORIGIN = 0x50200000, LENGTH = 32M
+    ram_memory  (!rx) : ORIGIN = 0x50200000, LENGTH = 62M
     xram_memory (!rx) : ORIGIN = 0x22020000, LENGTH = 16K
     SRAM_JPG_HDR      : ORIGIN = 0x30021800, LENGTH = 768
 }
