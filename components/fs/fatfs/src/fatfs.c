@@ -34,7 +34,8 @@ typedef struct _fat_dir_t
 
 static fsid_map_t g_fsid[] = { { DEV_MMC, MMC_MOUNTPOINT, MMC_PARTITION_ID },
                                { DEV_USB, USB_MOUNTPOINT, USB_PARTITION_ID },
-                               { DEV_RAM, RAM_MOUNTPOINT, RAM_PARTITION_ID } };
+                               { DEV_RAM, RAM_MOUNTPOINT, RAM_PARTITION_ID },
+                               { DEV_FLASH, FLASH_MOUNTPOINT, FLASH_PARTITION_ID } };
 
 static FATFS *g_fatfs[FF_VOLUMES] = { 0 };
 
@@ -644,15 +645,7 @@ static int fatfs_dev_register(int pdrv)
             goto error;
         }
 
-        MKFS_PARM fs_para = {
-            .fmt = FM_EXFAT,     /* Format option (FM_FAT, FM_FAT32, FM_EXFAT and FM_SFD) */
-            .n_fat = 1,          /* Number of FATs */
-            .align = 0,          /* Data area alignment (sector) */
-            .n_root = 1,         /* Number of root directory entries */
-            .au_size = 512 * 8,  /* Cluster size (byte) */
-        };
-
-        err = f_mkfs(g_fsid[index].id, &fs_para, work, FF_MAX_SS);
+        err = f_mkfs(g_fsid[index].id, NULL, work, FF_MAX_SS);
         vPortFree(work);
 
         if (err != FR_OK) {
@@ -701,22 +694,32 @@ int fatfs_register(void)
 {
     int err = -EINVAL;
 
-#ifdef CONFIG_AOS_FATFS_SUPPORT_MMC
-    if ((err = fatfs_dev_register(DEV_MMC)) != FR_OK) {
-        return err;
+#ifdef CONFIG_AOS_FATFS_SUPPORT_FLASH
+    if ((err = fatfs_dev_register(DEV_FLASH)) != FR_OK) {
+        // return err;
     }
+#endif
+
+#ifdef CONFIG_AOS_FATFS_SUPPORT_MMC
+#ifdef CPU_M0
+    if ((err = fatfs_dev_register(DEV_MMC)) != FR_OK) {
+        // return err;
+    }
+#endif
 #endif
 
 #ifdef CONFIG_AOS_FATFS_SUPPORT_USB
     if ((err = fatfs_dev_register(DEV_USB)) != FR_OK) {
-        return err;
+        // return err;
     }
 #endif
 
 #ifdef CONFIG_AOS_FATFS_SUPPORT_RAM
-    if ((err = fatfs_dev_register(DEV_RAM)) != FR_OK) {
-        return err;
-    }
+// #ifdef CPU_M0
+//     if ((err = fatfs_dev_register(DEV_RAM)) != FR_OK) {
+//         // return err;
+//     }
+// #endif
 #endif
 
     return err;
@@ -726,22 +729,32 @@ int fatfs_unregister(void)
 {
     int err = -EINVAL;
 
-#ifdef CONFIG_AOS_FATFS_SUPPORT_MMC
-    if ((err = fatfs_dev_unregister(DEV_MMC)) != FR_OK) {
-        return err;
+#ifdef CONFIG_AOS_FATFS_SUPPORT_FLASH
+    if ((err = fatfs_dev_unregister(DEV_FLASH)) != FR_OK) {
+        // return err;
     }
+#endif
+
+#ifdef CONFIG_AOS_FATFS_SUPPORT_MMC
+#ifdef CPU_M0
+    if ((err = fatfs_dev_unregister(DEV_MMC)) != FR_OK) {
+        // return err;
+    }
+#endif
 #endif
 
 #ifdef CONFIG_AOS_FATFS_SUPPORT_USB
     if ((err = fatfs_dev_unregister(DEV_USB)) != FR_OK) {
-        return err;
+        // return err;
     }
 #endif
 
 #ifdef CONFIG_AOS_FATFS_SUPPORT_RAM
-    if ((err = fatfs_dev_unregister(DEV_RAM)) != FR_OK) {
-        return err;
-    }
+// #ifdef CPU_M0
+//     if ((err = fatfs_dev_unregister(DEV_RAM)) != FR_OK) {
+//         // return err;
+//     }
+// #endif
 #endif
 
     return err;
