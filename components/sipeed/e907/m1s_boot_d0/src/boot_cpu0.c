@@ -23,9 +23,9 @@
 #include <string.h>
 #include <task.h>
 #include <vfs.h>
-#include "m1s_msc.h"
 
 #include "l2_sram.h"
+#include "m1s_msc.h"
 
 #define C906_START_ADDR (0x50100000)
 
@@ -44,9 +44,9 @@ void mm_clk_config(void)
 int check_key_press(void)
 {
     GLB_GPIO_Cfg_Type cfg;
-    cfg.drive=0;
-    cfg.smtCtrl=1;
-    cfg.gpioFun = GPIO_FUN_GPIO;                
+    cfg.drive = 0;
+    cfg.smtCtrl = 1;
+    cfg.gpioFun = GPIO_FUN_GPIO;
     cfg.gpioMode = GPIO_MODE_INPUT;
     cfg.pullType = GPIO_PULL_UP;
     cfg.gpioPin = 22;
@@ -88,6 +88,12 @@ void c906_bringup(uint32_t start_addr)
         memcpy((void *)start_addr, filebuf.buf, (unsigned long)filebuf.bufsize);
         csi_dcache_clean_range((uint32_t *)start_addr, (unsigned long)filebuf.bufsize);
 #else
+        if (0 == aos_access("/sdcard", 0)) {
+            m1s_msc_init(0);
+        } else {
+            m1s_msc_init(3);
+        }
+
         bl_mtd_handle_t handle_d0fw;
         bl_mtd_info_t info;
         int ret = -1;
@@ -168,11 +174,17 @@ static void cmd_jtag_cpu0(char *buf, int len, int argc, char **argv) { sipeed_bl
 
 static void cmd_jtag_m0(char *buf, int len, int argc, char **argv) { sipeed_bl_sys_enabe_jtag(0); }
 
-static void cmd_c906_bringup(char *buf, int len, int argc, char **argv) { xTaskCreate(c906_bringup_entry, (char *)"bootc906", 2048, NULL, 10, NULL); }
+static void cmd_c906_bringup(char *buf, int len, int argc, char **argv)
+{
+    xTaskCreate(c906_bringup_entry, (char *)"bootc906", 2048, NULL, 10, NULL);
+}
 
 const static struct cli_command cmds_user[] STATIC_CLI_CMD_ATTRIBUTE = {
-    {"halt_cpu0", "cpu0 halt", cmd_halt_cpu0}, {"jtag_cpu0", "cpu0 jtag", cmd_jtag_cpu0}, {"release_cpu0", "cpu0 release", cmd_release_cpu0},
-    {"c906", "setup c906", cmd_c906_bringup},  {"jtag_m0", "cpu m0 jtag", cmd_jtag_m0},
+    {"halt_cpu0", "cpu0 halt", cmd_halt_cpu0},
+    {"jtag_cpu0", "cpu0 jtag", cmd_jtag_cpu0},
+    {"release_cpu0", "cpu0 release", cmd_release_cpu0},
+    {"c906", "setup c906", cmd_c906_bringup},
+    {"jtag_m0", "cpu m0 jtag", cmd_jtag_m0},
 };
 
 int boot_cpu0_cli_init(void)

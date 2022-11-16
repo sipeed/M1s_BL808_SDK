@@ -191,14 +191,9 @@ void usbd_msc_get_cap(uint8_t lun, uint32_t *block_num, uint16_t *block_size)
     *block_size = 0;
 
     switch (private.fatfs_num) {
-        case 0: {
-            hal_sd_info_t info;
-            if (hal_sd_info_get(&private.sd, &info) == 0) {
-                *block_num = info.blk_nums;
-                *block_size = info.blk_size;
-            }
-        } break;
+        case 0:
         case 2:
+        case 3:
             disk_ioctl(private.fatfs_num, GET_SECTOR_COUNT, block_num);
             disk_ioctl(private.fatfs_num, GET_SECTOR_SIZE, block_size);
 
@@ -213,11 +208,8 @@ int usbd_msc_sector_read(uint32_t sector, uint8_t *buffer, uint32_t length)
 {
     switch (private.fatfs_num) {
         case 0:
-            if (hal_sd_blks_read(&private.sd, buffer, sector, length / private.blk_size, -1) != 0) {
-                return -1;
-            }
-            break;
         case 2:
+        case 3:
             if (RES_OK != disk_read(private.fatfs_num, buffer, sector, length / private.blk_size)) {
                 return -1;
             }
@@ -231,11 +223,8 @@ int usbd_msc_sector_write(uint32_t sector, uint8_t *buffer, uint32_t length)
 {
     switch (private.fatfs_num) {
         case 0:
-            if (hal_sd_blks_write(&private.sd, buffer, sector, length / private.blk_size, -1) != 0) {
-                return -1;
-            }
-            break;
         case 2:
+        case 3:
             if (RES_OK != disk_write(private.fatfs_num, buffer, sector, length / private.blk_size)) {
                 return -1;
             }
@@ -253,7 +242,7 @@ int m1s_msc_init(uint8_t type)
 {
     private.fatfs_num = type;
     if (type == 0) {  // MMC Fatfs
-        if (0 != hal_sd_init(&private.sd)) return -1;
+        printf("flash usb disk\r\n");
     } else if (type == 2) {  // RAM Fatfs
         char *path = "2:";
         if (0 != gen_ram_fatfs(path)) return -1;
@@ -265,6 +254,8 @@ int m1s_msc_init(uint8_t type)
         private.cache_d0fw_buff = 0x52000000;
         private.check_d0fw_buff = 0x52800000;
         if (pdTRUE != xTaskCreate(upload_firmware_handle, "upload firmware", 1024, path, 15, NULL)) return -1;
+    } else if (type == 3) {  // RAM Fatfs
+        printf("flash usb disk\r\n");
     }
 
     // msc init
