@@ -1151,6 +1151,38 @@ static void ls_cmd(char *buf, int len, int argc, char **argv)
             } else {
                 printf("can not open lfs\r\n");
             }
+        } else if (!memcmp(argv[1], "/flash", strlen("/flash"))) {
+            dp = (aos_dir_t *)aos_opendir(argv[1]);
+            if (dp) {
+                printf("\tSize\t\t\t\t\t Name\t\t\tFiletype\r\n");
+                printf("----------------------------------------------------------------------------------\r\n");
+                while(1) {
+                    out_dirent = (aos_dirent_t *)aos_readdir(dp);
+                    if (out_dirent == NULL) {
+                        break;
+                    }
+                    //log_info("path_name = %s\r\n", out_dirent->d_name);
+
+                    memset(path_name, 0, sizeof(path_name));
+                    snprintf(path_name, sizeof(path_name) - 1, "%s", argv[1]);
+                    if (path_name[strlen(path_name) - 1] != '/') {
+                        path_name[strlen(path_name)] = '/';
+                    }
+                    snprintf(path_name + strlen(path_name), sizeof(path_name)- strlen(path_name) - 1, "%s", out_dirent->d_name);
+
+                    //log_info("path_name = %s\r\n", path_name);
+                    if (0 == aos_stat(path_name, st)) {
+                        if (S_IFDIR & st->st_mode) {
+                            printf("%10ld\t\t%30s\t\t\tDirectory\r\n", st->st_size, out_dirent->d_name);
+                        } else {
+                            printf("%10ld\t\t%30s\t\t\tFile\r\n", st->st_size, out_dirent->d_name);
+                        }
+                    }
+                }
+                aos_closedir(dp);
+            } else {
+                printf("can not open flash\r\n");
+            }
         } else if (!strcmp(argv[1], "/")) {
             inode_forearch_name(cb_idnoe, &env);
         } else {
