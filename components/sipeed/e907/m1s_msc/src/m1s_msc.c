@@ -87,11 +87,15 @@ static int gen_ram_fatfs(TCHAR *path)
 {
     FATFS fs;
     FRESULT res;
-    uint8_t work[FF_MAX_SS];
     if (FR_OK == (res = f_mount(&fs, path, 1))) {
         res = f_unmount(path);
     } else {
-        res = f_mkfs(path, 0, work, FF_MAX_SS);
+        res = -1;
+        uint8_t *work = malloc(FF_MAX_SS);
+        if (work) {
+            res = f_mkfs(path, 0, work, FF_MAX_SS);
+            free(work);
+        }
     }
     return res;
 }
@@ -253,7 +257,7 @@ int m1s_msc_init(uint8_t type)
         */
         private.cache_d0fw_buff = 0x52000000;
         private.check_d0fw_buff = 0x52800000;
-        if (pdTRUE != xTaskCreate(upload_firmware_handle, "upload firmware", 1024, path, 15, NULL)) return -1;
+        if (pdTRUE != xTaskCreate(upload_firmware_handle, "upload firmware", 10*1024, path, 15, NULL)) return -1;
     } else if (type == 3) {  // RAM Fatfs
         printf("flash usb disk\r\n");
     }
