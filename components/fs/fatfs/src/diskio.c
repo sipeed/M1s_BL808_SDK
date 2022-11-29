@@ -242,7 +242,7 @@ static DSTATUS  FLASH_disk_initialize()
     static uint8_t is_init = 0;
     if (!is_init) {
         flash_private.base_addr = (uint8_t *)0x300000;
-        flash_private.total_size = 4 * 1024 * 1024;
+        flash_private.total_size = 8 * 1024 * 1024;
         flash_private.sector_size = FF_MAX_SS;
         flash_private.sector_nums = flash_private.total_size / FF_MAX_SS;
         flash_private.stat = 0;
