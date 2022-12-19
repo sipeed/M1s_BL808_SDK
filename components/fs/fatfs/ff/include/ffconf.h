@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------/
 /  FatFs Functional Configurations
 /---------------------------------------------------------------------------*/
-#define CONFIG_AOS_FATFS_SUPPORT_MMC
+// #define CONFIG_AOS_FATFS_SUPPORT_MMC
 //#define CONFIG_AOS_FATFS_SUPPORT_USB
 #define CONFIG_AOS_FATFS_SUPPORT_RAM
 #define CONFIG_AOS_FATFS_SUPPORT_FLASH
