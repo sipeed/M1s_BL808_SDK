@@ -216,8 +216,8 @@ _retry:
         }
 
         client_addr.sin_family = AF_INET;
-        client_addr.sin_port = htons(8888);
-        client_addr.sin_addr.s_addr = inet_addr("10.42.0.1");
+        client_addr.sin_port = htons(private.port);
+        client_addr.sin_addr.s_addr = inet_addr(private.ip);
         memset(&(client_addr.sin_zero), 0, sizeof(client_addr.sin_zero));
         
         if(-1 == connect(sock,
